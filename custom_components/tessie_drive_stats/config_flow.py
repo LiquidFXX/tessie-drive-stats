@@ -22,6 +22,7 @@ from .api import (
 from .const import (
     CONF_ACCESS_TOKEN,
     CONF_UPDATE_INTERVAL,
+    CONF_VEHICLE_NAME,
     CONF_VIN,
     CONF_WEEK_START,
     DEFAULT_UPDATE_INTERVAL,
@@ -51,9 +52,10 @@ def _user_schema(default_vin: str | None = None) -> vol.Schema:
 class TessieDriveStatsConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tessie Drive Stats."""
 
-    VERSION = 1
+    VERSION = 2
 
-    async def _validate(self, token: str, vin: str) -> dict[str, Any]:
+    async def _validate(self, token: str, vin: str) -> str:
+        """Validate credentials and return Tessie's vehicle display name."""
         client = TessieApiClient(
             async_get_clientsession(self.hass),
             token,
@@ -73,7 +75,7 @@ class TessieDriveStatsConfigFlow(ConfigFlow, domain=DOMAIN):
             vin = user_input[CONF_VIN].strip().upper()
 
             try:
-                vehicle = await self._validate(token, vin)
+                vehicle_name = await self._validate(token, vin)
             except TessieAuthError:
                 errors["base"] = "invalid_auth"
             except TessieVehicleNotFound:
@@ -84,12 +86,12 @@ class TessieDriveStatsConfigFlow(ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(vin)
                 self._abort_if_unique_id_configured()
 
-                title = vehicle.get("display_name") or f"Tessie {vin[-6:]}"
                 return self.async_create_entry(
-                    title=title,
+                    title=vehicle_name,
                     data={
                         CONF_ACCESS_TOKEN: token,
                         CONF_VIN: vin,
+                        CONF_VEHICLE_NAME: vehicle_name,
                     },
                 )
 
@@ -118,7 +120,7 @@ class TessieDriveStatsConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             token = normalize_token(user_input[CONF_ACCESS_TOKEN])
             try:
-                await self._validate(token, vin)
+                vehicle_name = await self._validate(token, vin)
             except TessieAuthError:
                 errors["base"] = "invalid_auth"
             except TessieApiError:
@@ -126,9 +128,16 @@ class TessieDriveStatsConfigFlow(ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id(vin)
                 self._abort_if_unique_id_mismatch()
+                self.hass.config_entries.async_update_entry(
+                    entry,
+                    title=vehicle_name,
+                )
                 return self.async_update_reload_and_abort(
                     entry,
-                    data_updates={CONF_ACCESS_TOKEN: token},
+                    data_updates={
+                        CONF_ACCESS_TOKEN: token,
+                        CONF_VEHICLE_NAME: vehicle_name,
+                    },
                 )
 
         return self.async_show_form(
