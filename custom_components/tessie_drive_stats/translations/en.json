@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Connect Tessie Drive Stats",
-        "description": "Enter a Tessie access token and the Tesla VIN to monitor.",
+        "description": "Enter a Tessie access token and Tesla VIN. The vehicle name will be fetched automatically from Tessie and used for the Home Assistant device and entity names.",
         "data": {
           "access_token": "Tessie access token",
           "vin": "VIN"
