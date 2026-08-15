@@ -1,4 +1,4 @@
-"""Tests for calculation helpers."""
+"""Tests for calculation helpers using synthetic vehicle history."""
 
 import importlib.util
 from pathlib import Path
@@ -16,26 +16,26 @@ spec.loader.exec_module(calc)
 
 DRIVES = [
     {
-        "id": 423814809,
-        "started_at": 1786802039,
-        "ended_at": 1786803450,
+        "id": 1002,
+        "started_at": 2000,
+        "ended_at": 3411,
         "starting_battery": 65,
         "ending_battery": 61,
         "odometer_distance": 11.64,
         "energy_used": 2.44,
-        "starting_location": "North Gum Street",
+        "starting_location": "Example Workplace",
         "ending_saved_location": "Home",
     },
     {
-        "id": 423799401,
-        "started_at": 1786798984,
-        "ended_at": 1786800247,
+        "id": 1001,
+        "started_at": 500,
+        "ended_at": 1763,
         "starting_battery": 70,
         "ending_battery": 66,
         "odometer_distance": 11.47,
         "energy_used": 2.5,
         "starting_saved_location": "Home",
-        "ending_location": "North Gum Street",
+        "ending_location": "Example Workplace",
     },
 ]
 
@@ -51,7 +51,7 @@ def test_today_metrics():
 
 def test_latest_drive():
     latest = calc.latest_record(DRIVES)
-    assert latest["id"] == 423814809
+    assert latest["id"] == 1002
     assert calc.record_distance(latest) == 11.64
     assert calc.record_energy(latest) == 2.44
     assert calc.record_time_minutes(latest) == 23.5
