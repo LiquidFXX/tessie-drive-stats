@@ -1,0 +1,72 @@
+{
+  "title": "Tessie Drive Stats",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Tessie Drive Stats",
+        "description": "Enter a Tessie access token and the Tesla VIN to monitor.",
+        "data": {
+          "access_token": "Tessie access token",
+          "vin": "VIN"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect Tessie",
+        "description": "The Tessie access token was rejected. Enter a new access token.",
+        "data": {
+          "access_token": "Tessie access token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to Tessie.",
+      "invalid_auth": "Tessie rejected the access token.",
+      "invalid_vin": "That VIN is not available to this Tessie access token."
+    },
+    "abort": {
+      "already_configured": "This vehicle is already configured.",
+      "reauth_successful": "Tessie authentication was updated successfully.",
+      "unique_id_mismatch": "The reauthentication response did not match this vehicle."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tessie Drive Stats options",
+        "description": "Choose how often history is refreshed and which day starts your week.",
+        "data": {
+          "update_interval": "Refresh interval (minutes)",
+          "week_start": "First day of week"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "drives_today": {"name": "Drives today"},
+      "miles_today": {"name": "Miles today"},
+      "energy_today": {"name": "Energy today"},
+      "drive_time_today": {"name": "Drive time today"},
+      "efficiency_today": {"name": "Efficiency today"},
+      "battery_used_today": {"name": "Battery used today"},
+      "last_drive_miles": {"name": "Last drive miles"},
+      "last_drive_energy": {"name": "Last drive energy"},
+      "last_drive_time": {"name": "Last drive time"},
+      "last_drive_efficiency": {"name": "Last drive efficiency"},
+      "last_drive_start": {"name": "Last drive start"},
+      "last_drive_destination": {"name": "Last drive destination"},
+      "last_drive_starting_battery": {"name": "Last drive starting battery"},
+      "last_drive_ending_battery": {"name": "Last drive ending battery"},
+      "last_drive_battery_used": {"name": "Last drive battery used"},
+      "last_drive_average_speed": {"name": "Last drive average speed"},
+      "last_drive_max_speed": {"name": "Last drive max speed"},
+      "cost_today": {"name": "Cost today"},
+      "cost_this_week": {"name": "Cost this week"},
+      "cost_this_month": {"name": "Cost this month"},
+      "cost_this_year": {"name": "Cost this year"},
+      "last_charge_cost": {"name": "Last charge cost"},
+      "last_charge_energy_added": {"name": "Last charge energy added"},
+      "last_charge_location": {"name": "Last charge location"}
+    }
+  }
+}
