@@ -7,6 +7,7 @@ NAME: Final = "Tessie Drive Stats"
 
 CONF_ACCESS_TOKEN: Final = "access_token"
 CONF_VIN: Final = "vin"
+CONF_VEHICLE_NAME: Final = "vehicle_name"
 CONF_UPDATE_INTERVAL: Final = "update_interval"
 CONF_WEEK_START: Final = "week_start"
 
