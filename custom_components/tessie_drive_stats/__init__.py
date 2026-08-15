@@ -2,16 +2,50 @@
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import TessieApiClient
-from .const import CONF_ACCESS_TOKEN, CONF_VIN
+from .api import TessieApiClient, TessieApiError
+from .const import CONF_ACCESS_TOKEN, CONF_VEHICLE_NAME, CONF_VIN
 from .coordinator import TessieDriveStatsCoordinator
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+_LOGGER = logging.getLogger(__name__)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate older entries to store Tessie's vehicle display name."""
+    if entry.version >= 2:
+        return True
+
+    vin = entry.data[CONF_VIN]
+    api = TessieApiClient(
+        async_get_clientsession(hass),
+        entry.data[CONF_ACCESS_TOKEN],
+        vin,
+    )
+
+    try:
+        vehicle_name = await api.async_get_vehicle_name()
+    except TessieApiError as err:
+        _LOGGER.warning(
+            "Unable to refresh Tessie vehicle name during migration: %s",
+            err,
+        )
+        vehicle_name = entry.title or f"Tesla {vin[-6:]}"
+
+    data = {**entry.data, CONF_VEHICLE_NAME: vehicle_name}
+    hass.config_entries.async_update_entry(
+        entry,
+        data=data,
+        title=vehicle_name,
+        version=2,
+    )
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
