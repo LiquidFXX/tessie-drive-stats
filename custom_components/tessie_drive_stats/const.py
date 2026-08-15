@@ -11,7 +11,7 @@ CONF_UPDATE_INTERVAL: Final = "update_interval"
 CONF_WEEK_START: Final = "week_start"
 
 DEFAULT_UPDATE_INTERVAL: Final = 5
-DEFAULT_WEEK_START: Final = "saturday"
+DEFAULT_WEEK_START: Final = "monday"
 MIN_UPDATE_INTERVAL: Final = 1
 MAX_UPDATE_INTERVAL: Final = 60
 
