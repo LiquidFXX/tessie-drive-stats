@@ -30,6 +30,29 @@ def normalize_token(token: str) -> str:
     return token
 
 
+def vehicle_name_from_payload(payload: dict[str, Any]) -> str | None:
+    """Extract the Tesla vehicle name from supported Tessie response shapes."""
+    candidates: list[Any] = [
+        payload.get("display_name"),
+        (payload.get("vehicle_state") or {}).get("vehicle_name"),
+    ]
+
+    last_state = payload.get("last_state") or {}
+    if isinstance(last_state, dict):
+        candidates.extend(
+            [
+                last_state.get("display_name"),
+                (last_state.get("vehicle_state") or {}).get("vehicle_name"),
+            ]
+        )
+
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate.strip()
+
+    return None
+
+
 class TessieApiClient:
     """Async Tessie API client using Home Assistant's shared aiohttp session."""
 
@@ -90,18 +113,31 @@ class TessieApiClient:
         except aiohttp.ClientError as err:
             raise TessieApiError(f"Error communicating with Tessie: {err}") from err
 
-    async def async_validate_vehicle(self) -> dict[str, Any]:
-        """Validate the token and VIN and return the vehicle record."""
+    async def async_validate_vehicle(self) -> str:
+        """Validate the token/VIN and return Tessie's vehicle display name."""
         payload = await self._get("/vehicles")
         vehicles = payload.get("results", [])
 
         for vehicle in vehicles:
-            if str(vehicle.get("vin", "")).upper() == self.vin:
-                return vehicle
+            if str(vehicle.get("vin", "")).upper() != self.vin:
+                continue
+
+            name = vehicle_name_from_payload(vehicle)
+            if name:
+                return name
+
+            # The /vehicles endpoint normally includes last_state, but use the
+            # dedicated state endpoint as a robust fallback for vehicle naming.
+            state = await self._get(f"/{self.vin}/state")
+            return vehicle_name_from_payload(state) or f"Tesla {self.vin[-6:]}"
 
         raise TessieVehicleNotFound(
             "The VIN was not found in the vehicles available to this Tessie token"
         )
+
+    async def async_get_vehicle_name(self) -> str:
+        """Return Tessie's current display name for the configured vehicle."""
+        return await self.async_validate_vehicle()
 
     async def async_get_drives(
         self,
