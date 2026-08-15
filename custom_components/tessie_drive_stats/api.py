@@ -126,8 +126,6 @@ class TessieApiClient:
             if name:
                 return name
 
-            # The /vehicles endpoint normally includes last_state, but use the
-            # dedicated state endpoint as a robust fallback for vehicle naming.
             state = await self._get(f"/{self.vin}/state")
             return vehicle_name_from_payload(state) or f"Tesla {self.vin[-6:]}"
 
@@ -172,6 +170,7 @@ class TessieApiClient:
         to_timestamp: int | None = None,
         timezone: str = "UTC",
         limit: int | None = None,
+        superchargers_only: bool = False,
     ) -> list[dict[str, Any]]:
         """Return charging sessions for the configured vehicle."""
         params: dict[str, Any] = {
@@ -185,7 +184,25 @@ class TessieApiClient:
             params["to"] = to_timestamp
         if limit is not None:
             params["limit"] = limit
+        if superchargers_only:
+            params["superchargers_only"] = "true"
 
         payload = await self._get(f"/{self.vin}/charges", params)
         results = payload.get("results", [])
         return results if isinstance(results, list) else []
+
+    async def async_get_battery_health(self) -> dict[str, Any] | None:
+        """Return Tessie's latest battery-health summary for this vehicle."""
+        payload = await self._get(
+            "/battery_health",
+            {"distance_format": "mi"},
+        )
+        results = payload.get("results", [])
+        if not isinstance(results, list):
+            return None
+
+        for result in results:
+            if str(result.get("vin", "")).upper() == self.vin:
+                return result
+
+        return None
