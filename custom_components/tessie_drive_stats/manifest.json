@@ -1,0 +1,12 @@
+{
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://developer.tessie.com/",
+  "domain": "tessie_drive_stats",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "name": "Tessie Drive Stats",
+  "requirements": [],
+  "version": "0.1.0"
+}
