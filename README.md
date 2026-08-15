@@ -155,6 +155,14 @@ During setup or migration, the integration also reads Tessie's vehicle metadata 
 
 Create an access token from Tessie Developer Settings. Tessie authentication uses an `Authorization: Bearer <token>` header.
 
+### New to Tessie?
+
+If you're signing up for Tessie and would like to support this project, you can use my referral link:
+
+**[Sign up for Tessie with my referral link](https://share.tessie.com/8TNHZg25Zwb)**
+
+*Disclosure: This is a personal Tessie referral link.*
+
 ## Version
 
 0.2.0
