@@ -27,18 +27,24 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .calculations import (
     cost_since,
+    drive_autopilot_miles,
     drive_battery_used,
     drive_count,
     drive_efficiency,
     drive_energy,
     drive_miles,
     drive_time_minutes,
+    record_autopilot_distance,
     record_battery_used,
     record_distance,
     record_efficiency,
     record_energy,
     record_location,
     record_time_minutes,
+    records_since,
+    supercharger_cost_since,
+    supercharger_count_since,
+    supercharger_energy_since,
 )
 from .const import CONF_VIN, DOMAIN
 from .coordinator import TessieDriveStatsCoordinator
@@ -50,6 +56,19 @@ class TessieSensorEntityDescription(SensorEntityDescription):
 
     value_fn: Callable[[dict[str, Any]], Any]
     dynamic_currency: bool = False
+
+
+def _period_drives(data: dict[str, Any], boundary: str) -> list[dict[str, Any]]:
+    """Return drives since one of the coordinator period boundaries."""
+    return records_since(data["drives_ytd"], data["boundaries"][boundary])
+
+
+def _health_value(data: dict[str, Any], key: str) -> Any:
+    """Return a battery-health value when available."""
+    health = data.get("battery_health")
+    if not health:
+        return None
+    return health.get(key)
 
 
 SENSORS: tuple[TessieSensorEntityDescription, ...] = (
@@ -108,6 +127,46 @@ SENSORS: tuple[TessieSensorEntityDescription, ...] = (
         value_fn=lambda data: drive_battery_used(data["drives_today"]),
     ),
     TessieSensorEntityDescription(
+        key="autopilot_fsd_miles_today",
+        translation_key="autopilot_fsd_miles_today",
+        icon="mdi:steering",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.MILES,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: drive_autopilot_miles(_period_drives(data, "today")),
+    ),
+    TessieSensorEntityDescription(
+        key="autopilot_fsd_miles_this_week",
+        translation_key="autopilot_fsd_miles_this_week",
+        icon="mdi:steering",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.MILES,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: drive_autopilot_miles(_period_drives(data, "week")),
+    ),
+    TessieSensorEntityDescription(
+        key="autopilot_fsd_miles_this_month",
+        translation_key="autopilot_fsd_miles_this_month",
+        icon="mdi:steering",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.MILES,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: drive_autopilot_miles(_period_drives(data, "month")),
+    ),
+    TessieSensorEntityDescription(
+        key="autopilot_fsd_miles_this_year",
+        translation_key="autopilot_fsd_miles_this_year",
+        icon="mdi:steering",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.MILES,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: drive_autopilot_miles(_period_drives(data, "year")),
+    ),
+    TessieSensorEntityDescription(
         key="last_drive_miles",
         translation_key="last_drive_miles",
         icon="mdi:car",
@@ -116,6 +175,16 @@ SENSORS: tuple[TessieSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         value_fn=lambda data: record_distance(data["last_drive"]),
+    ),
+    TessieSensorEntityDescription(
+        key="last_drive_autopilot_fsd_miles",
+        translation_key="last_drive_autopilot_fsd_miles",
+        icon="mdi:steering",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.MILES,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: record_autopilot_distance(data["last_drive"]),
     ),
     TessieSensorEntityDescription(
         key="last_drive_energy",
@@ -271,6 +340,138 @@ SENSORS: tuple[TessieSensorEntityDescription, ...] = (
         ),
     ),
     TessieSensorEntityDescription(
+        key="supercharger_sessions_today",
+        translation_key="supercharger_sessions_today",
+        icon="mdi:ev-station",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: supercharger_count_since(
+            data["charges_ytd"], data["boundaries"]["today"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_sessions_this_week",
+        translation_key="supercharger_sessions_this_week",
+        icon="mdi:ev-station",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: supercharger_count_since(
+            data["charges_ytd"], data["boundaries"]["week"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_sessions_this_month",
+        translation_key="supercharger_sessions_this_month",
+        icon="mdi:ev-station",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: supercharger_count_since(
+            data["charges_ytd"], data["boundaries"]["month"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_sessions_this_year",
+        translation_key="supercharger_sessions_this_year",
+        icon="mdi:ev-station",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: supercharger_count_since(
+            data["charges_ytd"], data["boundaries"]["year"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_energy_today",
+        translation_key="supercharger_energy_today",
+        icon="mdi:lightning-bolt-circle",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: supercharger_energy_since(
+            data["charges_ytd"], data["boundaries"]["today"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_energy_this_week",
+        translation_key="supercharger_energy_this_week",
+        icon="mdi:lightning-bolt-circle",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: supercharger_energy_since(
+            data["charges_ytd"], data["boundaries"]["week"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_energy_this_month",
+        translation_key="supercharger_energy_this_month",
+        icon="mdi:lightning-bolt-circle",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: supercharger_energy_since(
+            data["charges_ytd"], data["boundaries"]["month"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_energy_this_year",
+        translation_key="supercharger_energy_this_year",
+        icon="mdi:lightning-bolt-circle",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: supercharger_energy_since(
+            data["charges_ytd"], data["boundaries"]["year"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_cost_today",
+        translation_key="supercharger_cost_today",
+        icon="mdi:currency-usd",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        dynamic_currency=True,
+        value_fn=lambda data: supercharger_cost_since(
+            data["charges_ytd"], data["boundaries"]["today"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_cost_this_week",
+        translation_key="supercharger_cost_this_week",
+        icon="mdi:currency-usd",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        dynamic_currency=True,
+        value_fn=lambda data: supercharger_cost_since(
+            data["charges_ytd"], data["boundaries"]["week"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_cost_this_month",
+        translation_key="supercharger_cost_this_month",
+        icon="mdi:currency-usd",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        dynamic_currency=True,
+        value_fn=lambda data: supercharger_cost_since(
+            data["charges_ytd"], data["boundaries"]["month"]
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="supercharger_cost_this_year",
+        translation_key="supercharger_cost_this_year",
+        icon="mdi:currency-usd",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        dynamic_currency=True,
+        value_fn=lambda data: supercharger_cost_since(
+            data["charges_ytd"], data["boundaries"]["year"]
+        ),
+    ),
+    TessieSensorEntityDescription(
         key="last_charge_cost",
         translation_key="last_charge_cost",
         icon="mdi:currency-usd",
@@ -310,6 +511,94 @@ SENSORS: tuple[TessieSensorEntityDescription, ...] = (
             )
         ),
     ),
+    TessieSensorEntityDescription(
+        key="last_supercharger_cost",
+        translation_key="last_supercharger_cost",
+        icon="mdi:currency-usd",
+        device_class=SensorDeviceClass.MONETARY,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        dynamic_currency=True,
+        value_fn=lambda data: (
+            None
+            if data["last_supercharger"] is None
+            else float(data["last_supercharger"].get("cost") or 0)
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="last_supercharger_energy_added",
+        translation_key="last_supercharger_energy_added",
+        icon="mdi:lightning-bolt-circle",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=2,
+        value_fn=lambda data: (
+            None
+            if data["last_supercharger"] is None
+            else float(data["last_supercharger"].get("energy_added") or 0)
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="last_supercharger_location",
+        translation_key="last_supercharger_location",
+        icon="mdi:ev-station",
+        value_fn=lambda data: (
+            None
+            if data["last_supercharger"] is None
+            else (
+                data["last_supercharger"].get("saved_location")
+                or data["last_supercharger"].get("location")
+            )
+        ),
+    ),
+    TessieSensorEntityDescription(
+        key="battery_health",
+        translation_key="battery_health",
+        icon="mdi:battery-heart-variant",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: _health_value(data, "health_percent"),
+    ),
+    TessieSensorEntityDescription(
+        key="battery_degradation",
+        translation_key="battery_degradation",
+        icon="mdi:battery-alert-variant-outline",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: _health_value(data, "degradation_percent"),
+    ),
+    TessieSensorEntityDescription(
+        key="battery_capacity",
+        translation_key="battery_capacity",
+        icon="mdi:battery",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: _health_value(data, "capacity"),
+    ),
+    TessieSensorEntityDescription(
+        key="battery_original_capacity",
+        translation_key="battery_original_capacity",
+        icon="mdi:battery-check",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        value_fn=lambda data: _health_value(data, "original_capacity"),
+    ),
+    TessieSensorEntityDescription(
+        key="battery_max_range",
+        translation_key="battery_max_range",
+        icon="mdi:map-marker-distance",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.MILES,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        value_fn=lambda data: _health_value(data, "max_range"),
+    ),
 )
 
 
@@ -328,7 +617,10 @@ async def async_setup_entry(
     )
 
 
-class TessieDriveStatsSensor(CoordinatorEntity[TessieDriveStatsCoordinator], SensorEntity):
+class TessieDriveStatsSensor(
+    CoordinatorEntity[TessieDriveStatsCoordinator],
+    SensorEntity,
+):
     """Representation of a Tessie Drive Stats sensor."""
 
     _attr_has_entity_name = True
