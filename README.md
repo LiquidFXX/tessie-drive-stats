@@ -1,6 +1,6 @@
 # Tessie Drive Stats for Home Assistant
 
-A HACS-ready Home Assistant custom integration that reads Tesla drive and charging history directly from Tessie and exposes native Home Assistant sensors.
+A HACS-ready Home Assistant custom integration that reads Tesla drive, charging, Supercharger, and battery-health history directly from Tessie and exposes native Home Assistant sensors.
 
 ## Features
 
@@ -9,31 +9,22 @@ A HACS-ready Home Assistant custom integration that reads Tesla drive and chargi
 - Supports multiple vehicles by adding one integration entry per VIN.
 - Automatically fetches the vehicle name from Tessie during setup.
 - Uses the Tessie vehicle name for the Home Assistant device and entity names.
-- Uses the VIN as the permanent internal unique identifier, so the identity stays stable even if the vehicle name changes.
-- Falls back to `Tesla <last 6 VIN digits>` only if Tessie does not provide a vehicle name.
-- Tessie token validation and VIN validation during setup.
-- Automatic Home Assistant reauthentication flow if Tessie rejects or invalidates the token.
-- Shared `DataUpdateCoordinator` so all entities use the same API data.
+- Uses the VIN as the permanent internal unique identifier.
 - Configurable refresh interval (1–60 minutes; default 5).
 - Configurable first day of week (default Monday).
 - Uses Home Assistant's configured timezone for day/week/month/year boundaries.
 - Uses Tessie's recorded charging-session `cost` field for cost totals.
+- Tracks combined Autopilot/FSD miles from Tessie's `autopilot_distance` drive field.
+- Tracks Supercharger sessions, energy, and cost from Tessie's `is_supercharger` field.
+- Pulls Tessie's battery-health summary: health, degradation, capacity, original capacity, and max range.
+- Battery health is refreshed every 6 hours because it changes slowly.
 - Diagnostics redact the Tessie access token and do not include coordinates or addresses.
 
 ## Vehicle naming
 
-The setup form only asks for a Tessie access token and VIN. The integration then resolves the vehicle name from Tessie automatically.
+The setup form asks for a Tessie access token and VIN. The integration resolves the vehicle name from Tessie automatically. Home Assistant uses that vehicle name for the device and new entity IDs, while the VIN remains the stable internal unique identifier.
 
-For example, if Tessie reports a vehicle name of **My Tesla**, Home Assistant will create a device named **My Tesla** and new entities will normally receive IDs such as:
-
-- `sensor.my_tesla_drives_today`
-- `sensor.my_tesla_miles_today`
-- `sensor.my_tesla_energy_today`
-- `sensor.my_tesla_cost_today`
-- `sensor.my_tesla_cost_this_week`
-- `sensor.my_tesla_last_drive_miles`
-
-The exact entity IDs can vary if entities with the same IDs already exist in Home Assistant. The VIN is used only for stable internal unique IDs and device identity; it is not normally exposed in the entity IDs.
+For example, if Tessie reports **My Tesla**, Home Assistant may create entity IDs beginning with `sensor.my_tesla_...`.
 
 ## Sensors
 
@@ -46,9 +37,22 @@ The exact entity IDs can vary if entities with the same IDs already exist in Hom
 - Efficiency today
 - Battery used today
 
+### Autopilot / FSD distance
+
+Tessie exposes one historical drive field named `autopilot_distance`. It does not distinguish legacy Autopilot from FSD, so this integration reports **combined AP/FSD miles**.
+
+- AP/FSD miles today
+- AP/FSD miles this week
+- AP/FSD miles this month
+- AP/FSD miles this year
+- Last drive AP/FSD miles
+
+If Tessie returns `null` for `autopilot_distance` on drives, the corresponding AP/FSD sensor may be unavailable rather than incorrectly reporting zero.
+
 ### Last drive
 
 - Last drive miles
+- Last drive AP/FSD miles
 - Last drive energy
 - Last drive time
 - Last drive efficiency
@@ -60,18 +64,44 @@ The exact entity IDs can vary if entities with the same IDs already exist in Hom
 - Last drive average speed
 - Last drive max speed
 
-### Charging cost
+### All charging cost
 
 - Cost today
 - Cost this week
 - Cost this month
 - Cost this year
 
-### Last charge
+### Supercharger statistics
+
+- Supercharger sessions today
+- Supercharger sessions this week
+- Supercharger sessions this month
+- Supercharger sessions this year
+- Supercharger energy today
+- Supercharger energy this week
+- Supercharger energy this month
+- Supercharger energy this year
+- Supercharger cost today
+- Supercharger cost this week
+- Supercharger cost this month
+- Supercharger cost this year
+
+### Last charge / Supercharger
 
 - Last charge cost
 - Last charge energy added
 - Last charge location
+- Last Supercharger cost
+- Last Supercharger energy added
+- Last Supercharger location
+
+### Battery health
+
+- Battery health (%)
+- Battery degradation (%)
+- Battery capacity (kWh)
+- Original battery capacity (kWh)
+- Battery max range (mi)
 
 ## Install manually for testing
 
@@ -101,24 +131,23 @@ If you already have Tessie drive-history or charge-history REST sensors, remove 
 
 The normal Tessie vehicle integration can remain installed. Tessie Drive Stats uses the separate domain `tessie_drive_stats` and adds historical/statistical sensors only.
 
-## Existing installations and vehicle names
-
-Version 0.1.2 migrates older config entries by fetching the Tessie vehicle name and updating the Home Assistant device/config-entry name. Home Assistant preserves existing entity IDs in its entity registry, so entities that were already created under an older fallback name may retain those old entity IDs. Freshly created entities use the Tessie vehicle name automatically.
-
 ## Cost behavior
 
-Cost totals are based on the `cost` value Tessie stores on each charging session. Sessions are assigned to a period based on their `started_at` timestamp. If Tessie reports a charge cost as `0`, this integration reports that session as zero cost; it does not invent an electricity rate.
+Cost totals are based on the `cost` value Tessie stores on each charging session. If Tessie reports a session cost as `0`, this integration reports zero; it does not invent an electricity rate.
+
+Supercharger statistics are identified from Tessie's `is_supercharger` field.
 
 The monetary unit shown by Home Assistant uses the currency configured in Home Assistant. The integration does not perform currency conversion.
 
 ## API usage
 
-The coordinator normally makes two history requests per refresh:
+The coordinator normally requests:
 
-- Today's completed drives: `GET /{vin}/drives`
+- Year-to-date completed drives: `GET /{vin}/drives`
 - Year-to-date charging sessions: `GET /{vin}/charges`
+- Battery health: `GET /battery_health` every 6 hours
 
-If there are no drives today or no charges this year, it performs an additional small request to retrieve the latest historical record for the corresponding “Last …” sensors.
+If there are no drives or charges in the current year, it may perform a small additional request to retrieve the latest historical drive, charge, or Supercharger for the corresponding “Last …” sensors.
 
 During setup or migration, the integration also reads Tessie's vehicle metadata to resolve the vehicle name.
 
@@ -128,4 +157,4 @@ Create an access token from Tessie Developer Settings. Tessie authentication use
 
 ## Version
 
-0.1.2
+0.2.0
