@@ -25,6 +25,14 @@ Tessie Drive Stats includes driving totals, AP/FSD distance, charging and Superc
 
 Tessie exposes one drive-history field named `autopilot_distance`. It does not distinguish legacy Autopilot from FSD, so the integration deliberately reports **combined AP/FSD distance** rather than inventing a split Tessie does not provide.
 
+## Dashboard & card examples
+
+Want to see what Tessie Drive Stats can look like in Home Assistant?
+
+**[View the Tesla-inspired dashboard and card examples →](examples/README.md)**
+
+The examples gallery includes screenshots for vehicle status, charging, driving periods, Last Drive, battery health, idle/vampire drain, charging costs, Supercharging, tire pressure, navigation, and software/alerts.
+
 ## Vehicle naming
 
 The setup form asks for a Tessie access token and VIN. The integration resolves the vehicle's Tessie display name automatically. Home Assistant uses that name for the device and new entity IDs, while the VIN remains the stable unique ID/device identifier.
