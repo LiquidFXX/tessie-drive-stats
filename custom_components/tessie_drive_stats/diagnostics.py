@@ -18,24 +18,35 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> dict[str, Any]:
-    """Return privacy-conscious diagnostics for a config entry."""
+    """Return privacy-conscious diagnostics without route/location data."""
     coordinator: TessieDriveStatsCoordinator = entry.runtime_data
     data = coordinator.data or {}
     last_drive = data.get("last_drive") or {}
     last_charge = data.get("last_charge") or {}
-    last_supercharger = data.get("last_supercharger") or {}
-    battery_health = data.get("battery_health") or {}
+    last_idle = data.get("last_idle") or {}
+    latest_alerts = data.get("firmware_alerts", [])
 
     return {
         "config_entry": async_redact_data(dict(entry.data), TO_REDACT),
         "options": dict(entry.options),
         "coordinator": {
             "last_update_success": coordinator.last_update_success,
-            "drives_today": len(data.get("drives_today", [])),
             "drives_year_to_date": len(data.get("drives_ytd", [])),
             "charges_year_to_date": len(data.get("charges_ytd", [])),
+            "idles_year_to_date": len(data.get("idles_ytd", [])),
+            "battery_health_samples": len(data.get("battery_health_measurements", [])),
+            "historical_state_samples_today": len(data.get("historical_states_today", [])),
+            "firmware_alert_count": len(latest_alerts),
+            "last_drive_path_point_count": len(data.get("last_drive_path", [])),
+            "charging_invoice_access": data.get("charging_invoice_access", False),
+            "charging_invoice_count": (
+                len(data.get("charging_invoices", []))
+                if isinstance(data.get("charging_invoices"), list)
+                else None
+            ),
             "boundaries": data.get("boundaries", {}),
-            "battery_health_updated_at": data.get("battery_health_updated_at"),
+            "cache_updated": data.get("cache_updated", {}),
+            "vehicle_status": (data.get("status") or {}).get("status"),
             "last_drive": {
                 "id": last_drive.get("id"),
                 "started_at": last_drive.get("started_at"),
@@ -48,23 +59,20 @@ async def async_get_config_entry_diagnostics(
                 "id": last_charge.get("id"),
                 "started_at": last_charge.get("started_at"),
                 "ended_at": last_charge.get("ended_at"),
-                "is_supercharger": last_charge.get("is_supercharger"),
                 "energy_added": last_charge.get("energy_added"),
                 "cost": last_charge.get("cost"),
+                "is_supercharger": last_charge.get("is_supercharger"),
             },
-            "last_supercharger": {
-                "id": last_supercharger.get("id"),
-                "started_at": last_supercharger.get("started_at"),
-                "ended_at": last_supercharger.get("ended_at"),
-                "energy_added": last_supercharger.get("energy_added"),
-                "cost": last_supercharger.get("cost"),
+            "last_idle": {
+                "id": last_idle.get("id"),
+                "started_at": last_idle.get("started_at"),
+                "ended_at": last_idle.get("ended_at"),
+                "energy_used": last_idle.get("energy_used"),
+                "sentry_fraction": last_idle.get("sentry_fraction"),
+                "climate_fraction": last_idle.get("climate_fraction"),
             },
-            "battery_health": {
-                "max_range": battery_health.get("max_range"),
-                "capacity": battery_health.get("capacity"),
-                "original_capacity": battery_health.get("original_capacity"),
-                "degradation_percent": battery_health.get("degradation_percent"),
-                "health_percent": battery_health.get("health_percent"),
-            },
+            "battery_keys": sorted((data.get("battery") or {}).keys()),
+            "consumption_keys": sorted((data.get("consumption") or {}).keys()),
+            "tire_pressure_keys": sorted((data.get("tire_pressure") or {}).keys()),
         },
     }

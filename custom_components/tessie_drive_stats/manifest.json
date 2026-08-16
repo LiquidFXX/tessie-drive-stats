@@ -1,12 +1,13 @@
 {
-  "codeowners": [],
+  "codeowners": ["@LiquidFXX"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://developer.tessie.com/",
+  "documentation": "https://github.com/LiquidFXX/tessie-drive-stats",
   "domain": "tessie_drive_stats",
   "integration_type": "service",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/LiquidFXX/tessie-drive-stats/issues",
   "name": "Tessie Drive Stats",
   "requirements": [],
-  "version": "0.2.0"
+  "version": "0.3.0"
 }
