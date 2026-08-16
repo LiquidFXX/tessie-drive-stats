@@ -33,6 +33,14 @@ Want to see what Tessie Drive Stats can look like in Home Assistant?
 
 The examples gallery includes screenshots for vehicle status, charging, driving periods, Last Drive, battery health, idle/vampire drain, charging costs, Supercharging, tire pressure, navigation, and software/alerts.
 
+<p align="center">
+  <a href="examples/README.md">
+    <img src="examples/screenshots/battery.png" alt="Battery analytics card example" width="360">
+  </a>
+</p>
+
+<p align="center"><sub>Battery analytics example — click the card to view the full gallery.</sub></p>
+
 ## Vehicle naming
 
 The setup form asks for a Tessie access token and VIN. The integration resolves the vehicle's Tessie display name automatically. Home Assistant uses that name for the device and new entity IDs, while the VIN remains the stable unique ID/device identifier.
