@@ -10,166 +10,278 @@ Tessie Drive Stats is intended to complement the normal Tessie/Home Assistant ve
 - Works with any Tesla available to the supplied Tessie access token.
 - Supports multiple vehicles by adding one integration entry per VIN.
 - Automatically fetches the vehicle name from Tessie during setup.
-- Uses the Tessie vehicle name for the Home Assistant device/entity naming while retaining the VIN as the permanent internal identifier.
+- Uses the Tessie vehicle name for Home Assistant device/entity naming while retaining the VIN as the permanent internal identifier.
 - Configurable refresh interval (1–60 minutes; default 5).
-- Configurable first day of week (default Monday).
+- Configurable first day of week.
 - Uses Home Assistant's configured timezone for day/week/month/year boundaries.
-- Preserves the v0.2 entity unique IDs so existing dashboards do not need to be rebuilt.
-- Adds more than 200 sensor definitions plus tire-pressure warning binary sensors. Niche, recorder-heavy, best-effort, and fleet-only entities are disabled by default where appropriate.
+- Preserves existing VIN-based unique IDs when upgrading from earlier beta versions.
+- Adds more than 200 sensor definitions plus tire-pressure warning binary sensors.
+- Niche, recorder-heavy, best-effort, and fleet-only entities are disabled by default where appropriate.
 - Diagnostics redact the Tessie access token and intentionally omit addresses, coordinates, and driving-path points.
 
 ## Analytics included
 
-### Driving: today / week / month / year
-
-- Drive count
-- Miles driven
-- Energy used
-- Driving time
-- Aggregate efficiency
-- Combined AP/FSD miles
-- Average speed
-- Maximum speed
-- Longest drive
-- Rated range used *(diagnostic, disabled by default)*
-- Average inside/outside temperature *(diagnostic, disabled by default)*
+Tessie Drive Stats includes driving totals, AP/FSD distance, charging and Supercharger costs, idle/vampire-drain analytics, consumption since charge, battery telemetry and health trends, tire pressure, navigation, software information, firmware alerts, observed sleep/activity estimates, and optional fleet Supercharger invoice data.
 
 Tessie exposes one drive-history field named `autopilot_distance`. It does not distinguish legacy Autopilot from FSD, so the integration deliberately reports **combined AP/FSD distance** rather than inventing a split Tessie does not provide.
 
-### Last drive
+## Vehicle naming
 
-- Distance, energy, duration, efficiency
-- Combined AP/FSD distance
-- Start and destination
-- Starting/ending battery and battery used
-- Average and maximum speed
-- Inside/outside temperature
-- Rated range used
-- Drive tag
-- Driving-path point count and a recorder-friendly, decimated route in attributes *(disabled by default)*
-- Best-effort AP-active share calculated from detailed route samples *(disabled by default)*
+The setup form asks for a Tessie access token and VIN. The integration resolves the vehicle's Tessie display name automatically. Home Assistant uses that name for the device and new entity IDs, while the VIN remains the stable unique ID/device identifier.
 
-### Charging and Supercharging
+For example, a vehicle Tessie names **My Tesla** may receive entity IDs beginning with:
 
-- Total charging cost today / week / month / year
-- Supercharger session count today / week / month / year
-- Supercharger energy today / week / month / year
-- Supercharger cost today / week / month / year
-- Last charge cost, energy added, and location
-- Last Supercharger cost, energy added, and location
+```text
+sensor.my_tesla_...
+binary_sensor.my_tesla_...
+```
 
-Charging cost totals use Tessie's recorded session `cost`; the integration does not invent a utility rate.
+Home Assistant preserves entity IDs that were already registered, so renaming a vehicle does not necessarily rename existing entity IDs. Depending on how Home Assistant names the device in your installation, your prefix may also look like `sensor.car_my_tesla_...`.
 
-### Idle / vampire drain
+## Example entity IDs and values
 
-Tessie defines an idle as a period when the vehicle is not driving or charging. The integration exposes:
+The table below is the complete v0.3.0 entity catalog using a fictional vehicle named **My Tesla**.
 
-- Idle sessions today / week / month / year
-- Idle duration today / week / month / year
-- Idle energy used today / week / month / year
-- Idle battery loss today / week / month / year
-- Rated range lost while idle
-- Estimated idle time attributable to Sentry Mode
-- Estimated idle time attributable to climate usage
-- Last idle duration, energy, battery loss, range loss, Sentry share, climate share, and location
-- Last-idle-state battery/range *(diagnostic, disabled by default)*
+**All values are illustrative examples only.** Actual states depend on the vehicle, Tessie data availability, Home Assistant unit settings, and account type. An unavailable Tessie field may appear as `unknown` or `unavailable` instead of the example shown.
 
-### Consumption since last charge
+Entities marked **Disabled** are disabled by default and can be enabled from **Settings → Devices & services → Tessie Drive Stats → your vehicle → Entities**.
 
-- Last charge timestamp
-- Distance driven since charge
-- Total battery percentage used
-- Battery percentage used by driving
-- Non-driving battery percentage used
-- Rated/ideal range used and driving-only portions
-- Total energy used
-- Driving energy used
-- Non-driving energy used
-- Driving-energy share
+### Driving and last drive
 
-This makes it easier to separate energy used to move the car from parked/climate/Sentry/other consumption.
+| Entity ID | Example value | Default |
+|---|---:|---|
+| `sensor.my_tesla_drives_today` | `2` | Enabled |
+| `sensor.my_tesla_miles_today` | `23.11 mi` | Enabled |
+| `sensor.my_tesla_energy_today` | `4.94 kWh` | Enabled |
+| `sensor.my_tesla_drive_time_today` | `44.6 min` | Enabled |
+| `sensor.my_tesla_efficiency_today` | `214 Wh/mi` | Enabled |
+| `sensor.my_tesla_battery_used_today` | `8 %` | Enabled |
+| `sensor.my_tesla_autopilot_fsd_miles_today` | `8.25 mi` | Enabled |
+| `sensor.my_tesla_average_speed_today` | `35.8 mph` | Enabled |
+| `sensor.my_tesla_max_speed_today` | `79 mph` | Enabled |
+| `sensor.my_tesla_longest_drive_today` | `11.64 mi` | Enabled |
+| `sensor.my_tesla_rated_range_used_today` | `23.27 mi` | Disabled |
+| `sensor.my_tesla_average_inside_temperature_today` | `72.4 °F` | Disabled |
+| `sensor.my_tesla_average_outside_temperature_today` | `88.1 °F` | Disabled |
+| `sensor.my_tesla_drives_this_week` | `11` | Enabled |
+| `sensor.my_tesla_miles_this_week` | `144.82 mi` | Enabled |
+| `sensor.my_tesla_energy_this_week` | `31.12 kWh` | Enabled |
+| `sensor.my_tesla_drive_time_this_week` | `280.5 min` | Enabled |
+| `sensor.my_tesla_efficiency_this_week` | `215 Wh/mi` | Enabled |
+| `sensor.my_tesla_autopilot_fsd_miles_this_week` | `94.30 mi` | Enabled |
+| `sensor.my_tesla_average_speed_this_week` | `37.2 mph` | Enabled |
+| `sensor.my_tesla_max_speed_this_week` | `81 mph` | Enabled |
+| `sensor.my_tesla_longest_drive_this_week` | `26.44 mi` | Enabled |
+| `sensor.my_tesla_rated_range_used_this_week` | `151.70 mi` | Disabled |
+| `sensor.my_tesla_average_inside_temperature_this_week` | `72.0 °F` | Disabled |
+| `sensor.my_tesla_average_outside_temperature_this_week` | `86.4 °F` | Disabled |
+| `sensor.my_tesla_drives_this_month` | `46` | Enabled |
+| `sensor.my_tesla_miles_this_month` | `612.40 mi` | Enabled |
+| `sensor.my_tesla_energy_this_month` | `132.18 kWh` | Enabled |
+| `sensor.my_tesla_drive_time_this_month` | `1178.3 min` | Enabled |
+| `sensor.my_tesla_efficiency_this_month` | `216 Wh/mi` | Enabled |
+| `sensor.my_tesla_autopilot_fsd_miles_this_month` | `456.20 mi` | Enabled |
+| `sensor.my_tesla_average_speed_this_month` | `38.1 mph` | Enabled |
+| `sensor.my_tesla_max_speed_this_month` | `84 mph` | Enabled |
+| `sensor.my_tesla_longest_drive_this_month` | `118.72 mi` | Enabled |
+| `sensor.my_tesla_rated_range_used_this_month` | `641.30 mi` | Disabled |
+| `sensor.my_tesla_average_inside_temperature_this_month` | `71.8 °F` | Disabled |
+| `sensor.my_tesla_average_outside_temperature_this_month` | `85.2 °F` | Disabled |
+| `sensor.my_tesla_drives_this_year` | `318` | Enabled |
+| `sensor.my_tesla_miles_this_year` | `4156.08 mi` | Enabled |
+| `sensor.my_tesla_energy_this_year` | `901.72 kWh` | Enabled |
+| `sensor.my_tesla_drive_time_this_year` | `8120.5 min` | Enabled |
+| `sensor.my_tesla_efficiency_this_year` | `217 Wh/mi` | Enabled |
+| `sensor.my_tesla_autopilot_fsd_miles_this_year` | `2984.60 mi` | Enabled |
+| `sensor.my_tesla_average_speed_this_year` | `38.7 mph` | Enabled |
+| `sensor.my_tesla_max_speed_this_year` | `87 mph` | Enabled |
+| `sensor.my_tesla_longest_drive_this_year` | `247.38 mi` | Enabled |
+| `sensor.my_tesla_rated_range_used_this_year` | `4342.10 mi` | Disabled |
+| `sensor.my_tesla_average_inside_temperature_this_year` | `71.6 °F` | Disabled |
+| `sensor.my_tesla_average_outside_temperature_this_year` | `74.3 °F` | Disabled |
+| `sensor.my_tesla_last_drive_miles` | `11.64 mi` | Enabled |
+| `sensor.my_tesla_last_drive_autopilot_fsd_miles` | `8.25 mi` | Enabled |
+| `sensor.my_tesla_last_drive_energy` | `2.44 kWh` | Enabled |
+| `sensor.my_tesla_last_drive_time` | `23.5 min` | Enabled |
+| `sensor.my_tesla_last_drive_efficiency` | `210 Wh/mi` | Enabled |
+| `sensor.my_tesla_last_drive_start` | `Work` | Enabled |
+| `sensor.my_tesla_last_drive_destination` | `Home` | Enabled |
+| `sensor.my_tesla_last_drive_starting_battery` | `65 %` | Enabled |
+| `sensor.my_tesla_last_drive_ending_battery` | `61 %` | Enabled |
+| `sensor.my_tesla_last_drive_battery_used` | `4 %` | Enabled |
+| `sensor.my_tesla_last_drive_average_speed` | `35 mph` | Enabled |
+| `sensor.my_tesla_last_drive_max_speed` | `79 mph` | Enabled |
+| `sensor.my_tesla_last_drive_inside_temperature` | `72.0 °F` | Enabled |
+| `sensor.my_tesla_last_drive_outside_temperature` | `87.0 °F` | Enabled |
+| `sensor.my_tesla_last_drive_rated_range_used` | `11.45 mi` | Enabled |
+| `sensor.my_tesla_last_drive_tag` | `Commute` | Enabled |
+| `sensor.my_tesla_last_drive_path_points` | `186` | Disabled |
+| `sensor.my_tesla_last_drive_path_autopilot_share` | `71.4 %` | Disabled |
 
-### Current battery telemetry
+### Charging, Supercharging, and idle
 
-- Battery level
-- Rated range
-- Ideal range
-- Tessie phantom-drain percentage
-- Energy remaining
-- Lifetime energy used
-- Pack current *(diagnostic, disabled by default)*
-- Pack voltage *(diagnostic, disabled by default)*
-- Minimum/maximum battery-module temperature
-- Battery-module temperature spread
+| Entity ID | Example value | Default |
+|---|---:|---|
+| `sensor.my_tesla_cost_today` | `$1.84` | Enabled |
+| `sensor.my_tesla_supercharger_sessions_today` | `0` | Enabled |
+| `sensor.my_tesla_supercharger_energy_today` | `0.00 kWh` | Enabled |
+| `sensor.my_tesla_supercharger_cost_today` | `$0.00` | Enabled |
+| `sensor.my_tesla_cost_this_week` | `$8.62` | Enabled |
+| `sensor.my_tesla_supercharger_sessions_this_week` | `1` | Enabled |
+| `sensor.my_tesla_supercharger_energy_this_week` | `42.60 kWh` | Enabled |
+| `sensor.my_tesla_supercharger_cost_this_week` | `$15.34` | Enabled |
+| `sensor.my_tesla_cost_this_month` | `$31.48` | Enabled |
+| `sensor.my_tesla_supercharger_sessions_this_month` | `3` | Enabled |
+| `sensor.my_tesla_supercharger_energy_this_month` | `118.40 kWh` | Enabled |
+| `sensor.my_tesla_supercharger_cost_this_month` | `$42.65` | Enabled |
+| `sensor.my_tesla_cost_this_year` | `$284.76` | Enabled |
+| `sensor.my_tesla_supercharger_sessions_this_year` | `18` | Enabled |
+| `sensor.my_tesla_supercharger_energy_this_year` | `742.80 kWh` | Enabled |
+| `sensor.my_tesla_supercharger_cost_this_year` | `$267.41` | Enabled |
+| `sensor.my_tesla_last_charge_cost` | `$1.84` | Enabled |
+| `sensor.my_tesla_last_charge_energy_added` | `18.60 kWh` | Enabled |
+| `sensor.my_tesla_last_charge_location` | `Home` | Enabled |
+| `sensor.my_tesla_last_supercharger_cost` | `$15.34` | Enabled |
+| `sensor.my_tesla_last_supercharger_energy_added` | `42.60 kWh` | Enabled |
+| `sensor.my_tesla_last_supercharger_location` | `Summerville Supercharger` | Enabled |
+| `sensor.my_tesla_idle_sessions_today` | `4` | Enabled |
+| `sensor.my_tesla_idle_time_today` | `382.5 min` | Enabled |
+| `sensor.my_tesla_idle_energy_today` | `1.42 kWh` | Enabled |
+| `sensor.my_tesla_idle_battery_used_today` | `2.0 %` | Enabled |
+| `sensor.my_tesla_idle_rated_range_used_today` | `5.80 mi` | Enabled |
+| `sensor.my_tesla_idle_sentry_time_today` | `211.4 min` | Enabled |
+| `sensor.my_tesla_idle_climate_time_today` | `42.7 min` | Enabled |
+| `sensor.my_tesla_idle_sessions_this_week` | `21` | Enabled |
+| `sensor.my_tesla_idle_time_this_week` | `1884.2 min` | Enabled |
+| `sensor.my_tesla_idle_energy_this_week` | `7.88 kWh` | Enabled |
+| `sensor.my_tesla_idle_battery_used_this_week` | `11.0 %` | Enabled |
+| `sensor.my_tesla_idle_rated_range_used_this_week` | `31.40 mi` | Enabled |
+| `sensor.my_tesla_idle_sentry_time_this_week` | `988.1 min` | Enabled |
+| `sensor.my_tesla_idle_climate_time_this_week` | `184.0 min` | Enabled |
+| `sensor.my_tesla_idle_sessions_this_month` | `86` | Enabled |
+| `sensor.my_tesla_idle_time_this_month` | `7482.0 min` | Enabled |
+| `sensor.my_tesla_idle_energy_this_month` | `31.45 kWh` | Enabled |
+| `sensor.my_tesla_idle_battery_used_this_month` | `43.0 %` | Enabled |
+| `sensor.my_tesla_idle_rated_range_used_this_month` | `126.80 mi` | Enabled |
+| `sensor.my_tesla_idle_sentry_time_this_month` | `3840.5 min` | Enabled |
+| `sensor.my_tesla_idle_climate_time_this_month` | `712.8 min` | Enabled |
+| `sensor.my_tesla_idle_sessions_this_year` | `591` | Enabled |
+| `sensor.my_tesla_idle_time_this_year` | `52644.7 min` | Enabled |
+| `sensor.my_tesla_idle_energy_this_year` | `219.74 kWh` | Enabled |
+| `sensor.my_tesla_idle_battery_used_this_year` | `301.0 %` | Enabled |
+| `sensor.my_tesla_idle_rated_range_used_this_year` | `892.30 mi` | Enabled |
+| `sensor.my_tesla_idle_sentry_time_this_year` | `27120.4 min` | Enabled |
+| `sensor.my_tesla_idle_climate_time_this_year` | `5182.6 min` | Enabled |
+| `sensor.my_tesla_last_idle_time` | `96.5 min` | Enabled |
+| `sensor.my_tesla_last_idle_energy` | `0.38 kWh` | Enabled |
+| `sensor.my_tesla_last_idle_battery_used` | `1.0 %` | Enabled |
+| `sensor.my_tesla_last_idle_rated_range_used` | `2.10 mi` | Enabled |
+| `sensor.my_tesla_last_idle_sentry_share` | `78.0 %` | Enabled |
+| `sensor.my_tesla_last_idle_climate_share` | `8.0 %` | Enabled |
+| `sensor.my_tesla_last_idle_location` | `Home` | Enabled |
+| `sensor.my_tesla_last_idle_starting_battery` | `62 %` | Enabled |
+| `sensor.my_tesla_last_idle_ending_battery` | `61 %` | Enabled |
+| `sensor.my_tesla_last_idle_state_battery_level` | `61 %` | Disabled |
+| `sensor.my_tesla_last_idle_state_range` | `168.4 mi` | Disabled |
 
-### Battery health and history
+### Consumption and battery
 
-- Battery health
-- Battery degradation
-- Current capacity
-- Original capacity
-- Maximum rated range
-- Maximum ideal range
-- Battery-health sample count for the year
-- 30-day and year-to-date capacity change
-- 30-day and year-to-date maximum-range change
+| Entity ID | Example value | Default |
+|---|---:|---|
+| `sensor.my_tesla_consumption_last_charge_at` | `2026-08-15 21:42:18` | Enabled |
+| `sensor.my_tesla_distance_since_charge` | `42.80 mi` | Enabled |
+| `sensor.my_tesla_battery_used_since_charge` | `18.0 %` | Enabled |
+| `sensor.my_tesla_battery_used_by_driving_since_charge` | `13.0 %` | Enabled |
+| `sensor.my_tesla_battery_used_non_driving_since_charge` | `5.0 %` | Enabled |
+| `sensor.my_tesla_rated_range_used_since_charge` | `48.60 mi` | Enabled |
+| `sensor.my_tesla_rated_range_used_by_driving_since_charge` | `41.20 mi` | Enabled |
+| `sensor.my_tesla_ideal_range_used_since_charge` | `45.10 mi` | Disabled |
+| `sensor.my_tesla_ideal_range_used_by_driving_since_charge` | `39.80 mi` | Disabled |
+| `sensor.my_tesla_energy_used_since_charge` | `10.82 kWh` | Enabled |
+| `sensor.my_tesla_energy_used_by_driving_since_charge` | `8.26 kWh` | Enabled |
+| `sensor.my_tesla_energy_used_non_driving_since_charge` | `2.56 kWh` | Enabled |
+| `sensor.my_tesla_driving_energy_share_since_charge` | `76.3 %` | Enabled |
+| `sensor.my_tesla_battery_level_current` | `61 %` | Enabled |
+| `sensor.my_tesla_battery_range_current` | `168.4 mi` | Enabled |
+| `sensor.my_tesla_ideal_battery_range_current` | `176.8 mi` | Enabled |
+| `sensor.my_tesla_phantom_drain` | `1.2 %` | Enabled |
+| `sensor.my_tesla_energy_remaining` | `48.70 kWh` | Enabled |
+| `sensor.my_tesla_lifetime_energy_used` | `12845.6 kWh` | Enabled |
+| `sensor.my_tesla_pack_current` | `-4.2 A` | Disabled |
+| `sensor.my_tesla_pack_voltage` | `386.7 V` | Disabled |
+| `sensor.my_tesla_battery_module_temp_min` | `29.4 °C` | Enabled |
+| `sensor.my_tesla_battery_module_temp_max` | `31.1 °C` | Enabled |
+| `sensor.my_tesla_battery_module_temp_spread` | `1.7 °C` | Enabled |
+| `sensor.my_tesla_battery_health` | `91.4 %` | Enabled |
+| `sensor.my_tesla_battery_degradation` | `8.6 %` | Enabled |
+| `sensor.my_tesla_battery_capacity` | `72.66 kWh` | Enabled |
+| `sensor.my_tesla_battery_original_capacity` | `79.50 kWh` | Enabled |
+| `sensor.my_tesla_battery_max_range` | `298.4 mi` | Enabled |
+| `sensor.my_tesla_battery_max_ideal_range` | `312.7 mi` | Enabled |
+| `sensor.my_tesla_battery_health_measurements_this_year` | `41` | Enabled |
+| `sensor.my_tesla_battery_capacity_change_30_days` | `-0.22 kWh` | Enabled |
+| `sensor.my_tesla_battery_capacity_change_this_year` | `-1.18 kWh` | Enabled |
+| `sensor.my_tesla_battery_max_range_change_30_days` | `-0.8 mi` | Enabled |
+| `sensor.my_tesla_battery_max_range_change_this_year` | `-4.6 mi` | Enabled |
 
-Battery-health data changes slowly and is refreshed on a longer cadence than normal drive data.
+### Vehicle, tires, software, activity, and fleet
 
-### Tire pressure
+| Entity ID | Example value | Default |
+|---|---:|---|
+| `sensor.my_tesla_vehicle_status` | `asleep` | Enabled |
+| `sensor.my_tesla_odometer_current` | `81485.3 mi` | Enabled |
+| `sensor.my_tesla_software_version` | `2026.26.7` | Enabled |
+| `sensor.my_tesla_software_update_status` | `available` | Enabled |
+| `sensor.my_tesla_software_update_version` | `2026.32.1` | Enabled |
+| `sensor.my_tesla_software_update_download` | `0 %` | Enabled |
+| `sensor.my_tesla_software_update_install` | `0 %` | Enabled |
+| `sensor.my_tesla_navigation_destination` | `Home` | Enabled |
+| `sensor.my_tesla_navigation_miles_to_arrival` | `12.4 mi` | Enabled |
+| `sensor.my_tesla_navigation_minutes_to_arrival` | `22.0 min` | Enabled |
+| `sensor.my_tesla_navigation_traffic_delay` | `4.0 min` | Enabled |
+| `sensor.my_tesla_navigation_energy_at_arrival` | `54 %` | Enabled |
+| `sensor.my_tesla_charging_state_current` | `Disconnected` | Enabled |
+| `sensor.my_tesla_charge_rate_current` | `0.0 mph` | Enabled |
+| `sensor.my_tesla_charger_power_current` | `0.0 kW` | Enabled |
+| `sensor.my_tesla_charge_limit` | `80 %` | Enabled |
+| `sensor.my_tesla_time_to_full_charge` | `0.0 h` | Enabled |
+| `sensor.my_tesla_inside_temperature_current` | `24.1 °C` | Enabled |
+| `sensor.my_tesla_outside_temperature_current` | `31.7 °C` | Enabled |
+| `sensor.my_tesla_connection_status` | `connected` | Enabled |
+| `sensor.my_tesla_tire_pressure_front_left` | `42.1 psi` | Enabled |
+| `sensor.my_tesla_tire_status_front_left` | `normal` | Disabled |
+| `sensor.my_tesla_tire_pressure_front_right` | `41.8 psi` | Enabled |
+| `sensor.my_tesla_tire_status_front_right` | `normal` | Disabled |
+| `sensor.my_tesla_tire_pressure_rear_left` | `42.4 psi` | Enabled |
+| `sensor.my_tesla_tire_status_rear_left` | `normal` | Disabled |
+| `sensor.my_tesla_tire_pressure_rear_right` | `42.0 psi` | Enabled |
+| `sensor.my_tesla_tire_status_rear_right` | `normal` | Disabled |
+| `sensor.my_tesla_firmware_alert_count` | `1` | Enabled |
+| `sensor.my_tesla_latest_firmware_alert` | `VCFRONT_a447` | Enabled |
+| `sensor.my_tesla_latest_firmware_alert_at` | `2026-08-15 14:18:32` | Enabled |
+| `sensor.my_tesla_observed_awake_time_today` | `96.4 min` | Disabled |
+| `sensor.my_tesla_observed_asleep_time_today` | `524.7 min` | Disabled |
+| `sensor.my_tesla_observed_waiting_for_sleep_time_today` | `18.2 min` | Disabled |
+| `sensor.my_tesla_observed_wakeups_today` | `3` | Disabled |
+| `sensor.my_tesla_charging_invoice_access` | `fleet_only` | Disabled |
+| `sensor.my_tesla_supercharger_invoice_count_this_year` | `12` | Disabled |
+| `sensor.my_tesla_supercharger_invoice_energy_this_year` | `518.40 kWh` | Disabled |
+| `sensor.my_tesla_supercharger_invoice_charging_fees_this_year` | `$146.88` | Disabled |
+| `sensor.my_tesla_supercharger_invoice_idle_fees_this_year` | `$0.00` | Disabled |
+| `sensor.my_tesla_supercharger_invoice_total_cost_this_year` | `$146.88` | Disabled |
+| `sensor.my_tesla_last_supercharger_invoice_cost` | `$18.24` | Disabled |
+| `sensor.my_tesla_last_supercharger_invoice_cost_per_kwh` | `$0.360/kWh` | Disabled |
 
-- Front-left, front-right, rear-left, and rear-right pressure
-- Tessie pressure status (`unknown`, `low`, `normal`) *(diagnostic status sensors disabled by default)*
-- Four `problem` binary sensors for low tire pressure
+### Tire-pressure warning binary sensors
 
-### Vehicle, navigation, charging, climate, and software state
+| Entity ID | Example value | Meaning |
+|---|---:|---|
+| `binary_sensor.my_tesla_tire_pressure_low_front_left` | `off` | Pressure not reported low |
+| `binary_sensor.my_tesla_tire_pressure_low_front_right` | `off` | Pressure not reported low |
+| `binary_sensor.my_tesla_tire_pressure_low_rear_left` | `off` | Pressure not reported low |
+| `binary_sensor.my_tesla_tire_pressure_low_rear_right` | `off` | Pressure not reported low |
 
-- Vehicle sleep status (`awake`, `waiting_for_sleep`, `asleep`)
-- Odometer
-- Vehicle/software version and software-update state
-- Navigation destination
-- Miles/minutes/traffic delay to arrival
-- Estimated battery at arrival
-- Current charging state, rate, power, charge limit, and time to full
-- Current inside/outside temperature
-- Connection status
-
-These are read-only supporting entities. Tessie Drive Stats does not add vehicle controls.
-
-### Firmware alerts
-
-- Alert count
-- Latest firmware alert
-- Latest alert timestamp
-- Latest alert description and recent fleet count in attributes
-
-### Observed sleep/activity analytics
-
-Historical state samples are used for best-effort estimates of:
-
-- Observed awake time today
-- Observed asleep time today
-- Observed waiting-for-sleep time today
-- Observed wakeups today
-
-These entities are disabled by default because historical sampling can only estimate transitions between observations; they should not be treated as exact accounting data.
-
-### Fleet-only charging invoices
-
-Tessie's detailed charging-invoice API is restricted to eligible fleet accounts. The integration supports it without making it a dependency for normal users.
-
-When available, optional entities include:
-
-- Invoice access status
-- Invoice count this year
-- Invoice Supercharger energy
-- Charging fees
-- Idle fees
-- Total invoice cost
-- Last invoice total and cost/kWh
-- Last invoice metadata in attributes
-
-These entities are disabled by default. A personal Tessie account continues to work normally when the invoice endpoint is unavailable.
+That is the complete v0.3.0 catalog: **206 sensor entities plus 4 tire-pressure warning binary sensors**.
 
 ## Update cadence and API load
 
@@ -187,263 +299,6 @@ An optional endpoint failure is isolated from the core drive/charging coordinato
 
 The optional last-drive route entity can expose GPS path points as attributes. It is disabled by default and limits the stored route to at most 200 points to reduce Home Assistant recorder/database growth.
 
-## Vehicle naming
-
-The setup form asks for a Tessie access token and VIN. The integration resolves the vehicle's Tessie display name automatically. Home Assistant uses that name for the device and for new entity IDs, while the VIN remains the stable unique ID/device identifier.
-
-For example, a vehicle Tessie names **My Tesla** may receive entity IDs such as:
-
-```text
-sensor.my_tesla_miles_today
-sensor.my_tesla_idle_energy_today
-sensor.my_tesla_battery_health
-```
-
-Home Assistant preserves entity IDs that were already registered, so renaming a vehicle does not necessarily rename existing entity IDs.
-
-## Example entity IDs
-
-The entity IDs below are examples for a vehicle named **My Tesla**. Home Assistant generates the vehicle portion of the entity ID from the device/entity naming in your installation, so your prefix may differ (for example, `sensor.car_coaster_...`). The suffixes listed below match the integration's v0.3.0 entity keys.
-
-Entities marked `# disabled by default` can be enabled from **Settings → Devices & services → Tessie Drive Stats → your vehicle → Entities**.
-
-### Driving and last drive
-
-```text
-sensor.my_tesla_drives_today
-sensor.my_tesla_miles_today
-sensor.my_tesla_energy_today
-sensor.my_tesla_drive_time_today
-sensor.my_tesla_efficiency_today
-sensor.my_tesla_battery_used_today
-sensor.my_tesla_autopilot_fsd_miles_today
-sensor.my_tesla_average_speed_today
-sensor.my_tesla_max_speed_today
-sensor.my_tesla_longest_drive_today
-sensor.my_tesla_rated_range_used_today  # disabled by default
-sensor.my_tesla_average_inside_temperature_today  # disabled by default
-sensor.my_tesla_average_outside_temperature_today  # disabled by default
-sensor.my_tesla_drives_this_week
-sensor.my_tesla_miles_this_week
-sensor.my_tesla_energy_this_week
-sensor.my_tesla_drive_time_this_week
-sensor.my_tesla_efficiency_this_week
-sensor.my_tesla_autopilot_fsd_miles_this_week
-sensor.my_tesla_average_speed_this_week
-sensor.my_tesla_max_speed_this_week
-sensor.my_tesla_longest_drive_this_week
-sensor.my_tesla_rated_range_used_this_week  # disabled by default
-sensor.my_tesla_average_inside_temperature_this_week  # disabled by default
-sensor.my_tesla_average_outside_temperature_this_week  # disabled by default
-sensor.my_tesla_drives_this_month
-sensor.my_tesla_miles_this_month
-sensor.my_tesla_energy_this_month
-sensor.my_tesla_drive_time_this_month
-sensor.my_tesla_efficiency_this_month
-sensor.my_tesla_autopilot_fsd_miles_this_month
-sensor.my_tesla_average_speed_this_month
-sensor.my_tesla_max_speed_this_month
-sensor.my_tesla_longest_drive_this_month
-sensor.my_tesla_rated_range_used_this_month  # disabled by default
-sensor.my_tesla_average_inside_temperature_this_month  # disabled by default
-sensor.my_tesla_average_outside_temperature_this_month  # disabled by default
-sensor.my_tesla_drives_this_year
-sensor.my_tesla_miles_this_year
-sensor.my_tesla_energy_this_year
-sensor.my_tesla_drive_time_this_year
-sensor.my_tesla_efficiency_this_year
-sensor.my_tesla_autopilot_fsd_miles_this_year
-sensor.my_tesla_average_speed_this_year
-sensor.my_tesla_max_speed_this_year
-sensor.my_tesla_longest_drive_this_year
-sensor.my_tesla_rated_range_used_this_year  # disabled by default
-sensor.my_tesla_average_inside_temperature_this_year  # disabled by default
-sensor.my_tesla_average_outside_temperature_this_year  # disabled by default
-sensor.my_tesla_last_drive_miles
-sensor.my_tesla_last_drive_autopilot_fsd_miles
-sensor.my_tesla_last_drive_energy
-sensor.my_tesla_last_drive_time
-sensor.my_tesla_last_drive_efficiency
-sensor.my_tesla_last_drive_start
-sensor.my_tesla_last_drive_destination
-sensor.my_tesla_last_drive_starting_battery
-sensor.my_tesla_last_drive_ending_battery
-sensor.my_tesla_last_drive_battery_used
-sensor.my_tesla_last_drive_average_speed
-sensor.my_tesla_last_drive_max_speed
-sensor.my_tesla_last_drive_inside_temperature
-sensor.my_tesla_last_drive_outside_temperature
-sensor.my_tesla_last_drive_rated_range_used
-sensor.my_tesla_last_drive_tag
-sensor.my_tesla_last_drive_path_points  # disabled by default
-sensor.my_tesla_last_drive_path_autopilot_share  # disabled by default
-```
-
-### Charging, Supercharging, and idle
-
-```text
-sensor.my_tesla_cost_today
-sensor.my_tesla_supercharger_sessions_today
-sensor.my_tesla_supercharger_energy_today
-sensor.my_tesla_supercharger_cost_today
-sensor.my_tesla_cost_this_week
-sensor.my_tesla_supercharger_sessions_this_week
-sensor.my_tesla_supercharger_energy_this_week
-sensor.my_tesla_supercharger_cost_this_week
-sensor.my_tesla_cost_this_month
-sensor.my_tesla_supercharger_sessions_this_month
-sensor.my_tesla_supercharger_energy_this_month
-sensor.my_tesla_supercharger_cost_this_month
-sensor.my_tesla_cost_this_year
-sensor.my_tesla_supercharger_sessions_this_year
-sensor.my_tesla_supercharger_energy_this_year
-sensor.my_tesla_supercharger_cost_this_year
-sensor.my_tesla_last_charge_cost
-sensor.my_tesla_last_charge_energy_added
-sensor.my_tesla_last_charge_location
-sensor.my_tesla_last_supercharger_cost
-sensor.my_tesla_last_supercharger_energy_added
-sensor.my_tesla_last_supercharger_location
-sensor.my_tesla_idle_sessions_today
-sensor.my_tesla_idle_time_today
-sensor.my_tesla_idle_energy_today
-sensor.my_tesla_idle_battery_used_today
-sensor.my_tesla_idle_rated_range_used_today
-sensor.my_tesla_idle_sentry_time_today
-sensor.my_tesla_idle_climate_time_today
-sensor.my_tesla_idle_sessions_this_week
-sensor.my_tesla_idle_time_this_week
-sensor.my_tesla_idle_energy_this_week
-sensor.my_tesla_idle_battery_used_this_week
-sensor.my_tesla_idle_rated_range_used_this_week
-sensor.my_tesla_idle_sentry_time_this_week
-sensor.my_tesla_idle_climate_time_this_week
-sensor.my_tesla_idle_sessions_this_month
-sensor.my_tesla_idle_time_this_month
-sensor.my_tesla_idle_energy_this_month
-sensor.my_tesla_idle_battery_used_this_month
-sensor.my_tesla_idle_rated_range_used_this_month
-sensor.my_tesla_idle_sentry_time_this_month
-sensor.my_tesla_idle_climate_time_this_month
-sensor.my_tesla_idle_sessions_this_year
-sensor.my_tesla_idle_time_this_year
-sensor.my_tesla_idle_energy_this_year
-sensor.my_tesla_idle_battery_used_this_year
-sensor.my_tesla_idle_rated_range_used_this_year
-sensor.my_tesla_idle_sentry_time_this_year
-sensor.my_tesla_idle_climate_time_this_year
-sensor.my_tesla_last_idle_time
-sensor.my_tesla_last_idle_energy
-sensor.my_tesla_last_idle_battery_used
-sensor.my_tesla_last_idle_rated_range_used
-sensor.my_tesla_last_idle_sentry_share
-sensor.my_tesla_last_idle_climate_share
-sensor.my_tesla_last_idle_location
-sensor.my_tesla_last_idle_starting_battery
-sensor.my_tesla_last_idle_ending_battery
-sensor.my_tesla_last_idle_state_battery_level  # disabled by default
-sensor.my_tesla_last_idle_state_range  # disabled by default
-```
-
-### Consumption and battery
-
-```text
-sensor.my_tesla_consumption_last_charge_at
-sensor.my_tesla_distance_since_charge
-sensor.my_tesla_battery_used_since_charge
-sensor.my_tesla_battery_used_by_driving_since_charge
-sensor.my_tesla_battery_used_non_driving_since_charge
-sensor.my_tesla_rated_range_used_since_charge
-sensor.my_tesla_rated_range_used_by_driving_since_charge
-sensor.my_tesla_ideal_range_used_since_charge  # disabled by default
-sensor.my_tesla_ideal_range_used_by_driving_since_charge  # disabled by default
-sensor.my_tesla_energy_used_since_charge
-sensor.my_tesla_energy_used_by_driving_since_charge
-sensor.my_tesla_energy_used_non_driving_since_charge
-sensor.my_tesla_driving_energy_share_since_charge
-sensor.my_tesla_battery_level_current
-sensor.my_tesla_battery_range_current
-sensor.my_tesla_ideal_battery_range_current
-sensor.my_tesla_phantom_drain
-sensor.my_tesla_energy_remaining
-sensor.my_tesla_lifetime_energy_used
-sensor.my_tesla_pack_current  # disabled by default
-sensor.my_tesla_pack_voltage  # disabled by default
-sensor.my_tesla_battery_module_temp_min
-sensor.my_tesla_battery_module_temp_max
-sensor.my_tesla_battery_module_temp_spread
-sensor.my_tesla_battery_health
-sensor.my_tesla_battery_degradation
-sensor.my_tesla_battery_capacity
-sensor.my_tesla_battery_original_capacity
-sensor.my_tesla_battery_max_range
-sensor.my_tesla_battery_max_ideal_range
-sensor.my_tesla_battery_health_measurements_this_year
-sensor.my_tesla_battery_capacity_change_30_days
-sensor.my_tesla_battery_capacity_change_this_year
-sensor.my_tesla_battery_max_range_change_30_days
-sensor.my_tesla_battery_max_range_change_this_year
-```
-
-### Vehicle, tires, software, activity, and fleet
-
-```text
-sensor.my_tesla_vehicle_status
-sensor.my_tesla_odometer_current
-sensor.my_tesla_software_version
-sensor.my_tesla_software_update_status
-sensor.my_tesla_software_update_version
-sensor.my_tesla_software_update_download
-sensor.my_tesla_software_update_install
-sensor.my_tesla_navigation_destination
-sensor.my_tesla_navigation_miles_to_arrival
-sensor.my_tesla_navigation_minutes_to_arrival
-sensor.my_tesla_navigation_traffic_delay
-sensor.my_tesla_navigation_energy_at_arrival
-sensor.my_tesla_charging_state_current
-sensor.my_tesla_charge_rate_current
-sensor.my_tesla_charger_power_current
-sensor.my_tesla_charge_limit
-sensor.my_tesla_time_to_full_charge
-sensor.my_tesla_inside_temperature_current
-sensor.my_tesla_outside_temperature_current
-sensor.my_tesla_connection_status
-sensor.my_tesla_tire_pressure_front_left
-sensor.my_tesla_tire_status_front_left  # disabled by default
-sensor.my_tesla_tire_pressure_front_right
-sensor.my_tesla_tire_status_front_right  # disabled by default
-sensor.my_tesla_tire_pressure_rear_left
-sensor.my_tesla_tire_status_rear_left  # disabled by default
-sensor.my_tesla_tire_pressure_rear_right
-sensor.my_tesla_tire_status_rear_right  # disabled by default
-sensor.my_tesla_firmware_alert_count
-sensor.my_tesla_latest_firmware_alert
-sensor.my_tesla_latest_firmware_alert_at
-sensor.my_tesla_observed_awake_time_today  # disabled by default
-sensor.my_tesla_observed_asleep_time_today  # disabled by default
-sensor.my_tesla_observed_waiting_for_sleep_time_today  # disabled by default
-sensor.my_tesla_observed_wakeups_today  # disabled by default
-sensor.my_tesla_charging_invoice_access  # disabled by default
-sensor.my_tesla_supercharger_invoice_count_this_year  # disabled by default
-sensor.my_tesla_supercharger_invoice_energy_this_year  # disabled by default
-sensor.my_tesla_supercharger_invoice_charging_fees_this_year  # disabled by default
-sensor.my_tesla_supercharger_invoice_idle_fees_this_year  # disabled by default
-sensor.my_tesla_supercharger_invoice_total_cost_this_year  # disabled by default
-sensor.my_tesla_last_supercharger_invoice_cost  # disabled by default
-sensor.my_tesla_last_supercharger_invoice_cost_per_kwh  # disabled by default
-```
-
-### Tire-pressure warning binary sensors
-
-```text
-binary_sensor.my_tesla_tire_pressure_low_front_left
-binary_sensor.my_tesla_tire_pressure_low_front_right
-binary_sensor.my_tesla_tire_pressure_low_rear_left
-binary_sensor.my_tesla_tire_pressure_low_rear_right
-```
-
-That is the complete v0.3.0 catalog: **206 sensor entities plus 4 tire-pressure warning binary sensors**.
-
 ## Install through HACS as a custom repository
 
 1. Open **HACS → Integrations**.
@@ -454,13 +309,13 @@ That is the complete v0.3.0 catalog: **206 sensor entities plus 4 tire-pressure 
 6. Open **Settings → Devices & services → Add integration**.
 7. Search for **Tessie Drive Stats** and enter the Tessie access token and vehicle VIN.
 
-To add another vehicle, add Tessie Drive Stats again with its VIN.
+To add another vehicle, add Tessie Drive Stats again with that vehicle's VIN.
 
 You may paste either the raw Tessie token or `Bearer <token>`; the integration normalizes both forms.
 
 ## Updating from an earlier beta
 
-Version 0.3.0 preserves the existing VIN-based unique IDs for the v0.2 sensors and adds the new analytics as additional entities. After updating through HACS, restart Home Assistant so the new `sensor` and `binary_sensor` platforms/entities are registered.
+Version 0.3.0 preserves the existing VIN-based unique IDs for earlier sensors and adds the new analytics as additional entities. After updating through HACS, restart Home Assistant so the new `sensor` and `binary_sensor` platforms/entities are registered.
 
 Some diagnostic, route, observed-activity, tire-status, and fleet-invoice entities are disabled by default. Enable any of them from the vehicle's entity list if you want to use them.
 
