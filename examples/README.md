@@ -2,23 +2,89 @@
 
 This page is the screenshot gallery for Home Assistant cards built with Tessie Drive Stats entities.
 
+The current example set uses a **Tesla-inspired dark UI**: charcoal panels, white/gray typography, Tesla red accents, compact metric tiles, and green/yellow/red reserved for status conditions.
+
 The screenshots are examples only. Entity IDs, values, units, themes, and card layouts will vary between Home Assistant installations.
 
-> **Privacy note:** Before posting a screenshot, check it for home/work addresses, navigation destinations, VINs, GPS coordinates, access tokens, or any other personal information.
+> **Privacy note:** Before publishing a screenshot, check it for home/work addresses, navigation destinations, VINs, GPS coordinates, access tokens, or any other personal information. Location data should be cropped or redacted before it is committed.
 
-## Full analytics dashboard
+## Tesla UI gallery
 
-Use this section for a screenshot of the complete Tessie Drive Stats analytics dashboard.
+Use this image for an overview of the complete example set.
 
 <!--
-![Full Tessie Drive Stats dashboard](screenshots/full-dashboard.png)
+![Tesla UI card gallery](screenshots/tesla-ui-gallery.jpg)
 -->
 
-Suggested filename: `screenshots/full-dashboard.png`
+Suggested filename: `screenshots/tesla-ui-gallery.jpg`
+
+## Dashboard header
+
+The vehicle header shows the vehicle name plus compact status modules for vehicle state, battery level, range, charging state, and outside temperature.
+
+<!--
+![Tesla UI dashboard header](screenshots/dashboard-header.png)
+-->
+
+Suggested filename: `screenshots/dashboard-header.png`
+
+## Vehicle
+
+Live vehicle information including connection state, battery/range, energy remaining, phantom drain, temperatures, odometer, and lifetime energy.
+
+<!--
+![Vehicle card](screenshots/vehicle.png)
+-->
+
+Suggested filename: `screenshots/vehicle.png`
+
+## Charging
+
+Current charging state, charge limit, charge rate, charger power, and time to full.
+
+<!--
+![Charging card](screenshots/charging.png)
+-->
+
+Suggested filename: `screenshots/charging.png`
+
+## Driving — Today
+
+<!--
+![Today driving card](screenshots/driving-today.png)
+-->
+
+Suggested filename: `screenshots/driving-today.png`
+
+## Driving — This Week
+
+<!--
+![This Week driving card](screenshots/driving-week.png)
+-->
+
+Suggested filename: `screenshots/driving-week.png`
+
+## Driving — This Month
+
+<!--
+![This Month driving card](screenshots/driving-month.png)
+-->
+
+Suggested filename: `screenshots/driving-month.png`
+
+## Driving — This Year
+
+<!--
+![This Year driving card](screenshots/driving-year.png)
+-->
+
+Suggested filename: `screenshots/driving-year.png`
 
 ## Last Drive
 
-Shows the most recent completed drive, including route, distance, drive time, energy, efficiency, AP/FSD distance, battery use, speed, and other available trip data.
+Shows the most recent completed drive, including distance, drive time, energy, efficiency, AP/FSD distance, battery use, speed, temperatures, range use, route information, and optional path data.
+
+**Public screenshots should hide exact start/destination addresses.**
 
 <!--
 ![Last Drive card](screenshots/last-drive.png)
@@ -26,39 +92,9 @@ Shows the most recent completed drive, including route, distance, drive time, en
 
 Suggested filename: `screenshots/last-drive.png`
 
-## AP / FSD
-
-Shows combined AP/FSD distance from Tessie's `autopilot_distance` field for today, week, month, year, and the most recent drive.
-
-<!--
-![AP FSD card](screenshots/ap-fsd.png)
--->
-
-Suggested filename: `screenshots/ap-fsd.png`
-
-## Driving Overview
-
-Use this for cards showing drive count, miles, drive time, energy, efficiency, average speed, maximum speed, longest drive, and period totals.
-
-<!--
-![Driving overview card](screenshots/driving-overview.png)
--->
-
-Suggested filename: `screenshots/driving-overview.png`
-
-## Battery Health & Range
-
-Shows battery health, degradation, current/original capacity, maximum range, current range, battery-module temperatures, and long-term battery trends.
-
-<!--
-![Battery health card](screenshots/battery-health.png)
--->
-
-Suggested filename: `screenshots/battery-health.png`
-
 ## Since Last Charge
 
-Shows energy and battery use since the last charge, including driving vs. non-driving consumption and range usage.
+Shows battery, energy, and range consumption since the most recent charge, including driving vs. non-driving use.
 
 <!--
 ![Since Last Charge card](screenshots/since-last-charge.png)
@@ -66,25 +102,63 @@ Shows energy and battery use since the last charge, including driving vs. non-dr
 
 Suggested filename: `screenshots/since-last-charge.png`
 
-## Idle / Vampire Drain
+## Battery Health & Range
 
-Shows parked energy use, idle time, battery loss, rated range loss, Sentry usage, climate usage, and last-idle details.
-
-<!--
-![Idle vampire drain card](screenshots/idle-vampire-drain.png)
--->
-
-Suggested filename: `screenshots/idle-vampire-drain.png`
-
-## Charging
-
-Use this section for current charging state, charge rate, charger power, charge limit, time to full, charging cost, and last-charge information.
+Shows battery health, degradation, current/original capacity, maximum range, module temperatures, and long-term capacity/range changes.
 
 <!--
-![Charging card](screenshots/charging.png)
+![Battery health card](screenshots/battery-health.png)
 -->
 
-Suggested filename: `screenshots/charging.png`
+Suggested filename: `screenshots/battery-health.png`
+
+## Idle / Vampire Drain — Today
+
+<!--
+![Idle Today card](screenshots/idle-today.png)
+-->
+
+Suggested filename: `screenshots/idle-today.png`
+
+## Idle / Vampire Drain — This Week
+
+<!--
+![Idle This Week card](screenshots/idle-week.png)
+-->
+
+Suggested filename: `screenshots/idle-week.png`
+
+## Idle / Vampire Drain — This Month
+
+<!--
+![Idle This Month card](screenshots/idle-month.png)
+-->
+
+Suggested filename: `screenshots/idle-month.png`
+
+## Idle / Vampire Drain — This Year
+
+<!--
+![Idle This Year card](screenshots/idle-year.png)
+-->
+
+Suggested filename: `screenshots/idle-year.png`
+
+## Last Idle
+
+<!--
+![Last Idle card](screenshots/last-idle.png)
+-->
+
+Suggested filename: `screenshots/last-idle.png`
+
+## Charging Costs
+
+<!--
+![Charging Costs card](screenshots/charging-costs.png)
+-->
+
+Suggested filename: `screenshots/charging-costs.png`
 
 ## Supercharging
 
@@ -106,15 +180,15 @@ Shows all four tire pressures and low-pressure warning binary sensors.
 
 Suggested filename: `screenshots/tire-pressure.png`
 
-## Navigation & Vehicle Status
+## Navigation
 
-Use this section for vehicle awake/asleep state, connection status, active route, ETA, traffic delay, and estimated battery at arrival.
+Shows active Tesla navigation data including destination, distance/ETA, traffic delay, and estimated battery at arrival.
 
 <!--
-![Navigation and vehicle status card](screenshots/navigation-vehicle.png)
+![Navigation card](screenshots/navigation.png)
 -->
 
-Suggested filename: `screenshots/navigation-vehicle.png`
+Suggested filename: `screenshots/navigation.png`
 
 ## Software & Alerts
 
@@ -126,17 +200,20 @@ Shows Tesla software version, update state/progress, firmware-alert information,
 
 Suggested filename: `screenshots/software-alerts.png`
 
-## Adding a screenshot
+## Additional Data
 
-1. Add the image to `examples/screenshots/` using the suggested filename above.
-2. Return to this file.
-3. Remove the `<!--` and `-->` around that screenshot's Markdown image line.
-4. Commit both changes together.
+The dashboard's catch-all section can display newly enabled or otherwise uncategorized Tessie Drive Stats entities.
 
-For example:
+<!--
+![Additional Data card](screenshots/additional-data.png)
+-->
 
-```markdown
-![Last Drive card](screenshots/last-drive.png)
-```
+Suggested filename: `screenshots/additional-data.png`
 
-For consistency, crop screenshots tightly around the card or dashboard, avoid exposing private location data, and use PNG where practical.
+## Adding screenshots
+
+1. Add images to `examples/screenshots/` using the suggested filenames above.
+2. Remove the `<!--` and `-->` around the corresponding Markdown image line in this file.
+3. Commit the image and Markdown change together.
+
+For consistency, crop screenshots tightly around the card or dashboard, use PNG where practical, and redact private location data before publishing.
