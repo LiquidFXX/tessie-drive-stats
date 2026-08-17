@@ -44,15 +44,17 @@ Want to see what Tessie Drive Stats can look like in Home Assistant?
 
 **[View the Tesla-inspired dashboard and card examples →](examples/README.md)**
 
-The examples gallery includes screenshots for vehicle status, charging, driving periods, Last Drive, battery health, idle/vampire drain, charging costs, Supercharging, tire pressure, navigation, and software/alerts. Version 0.4.0 also includes a reusable **[Tesla-style Lifetime card YAML](examples/lifetime-card.yaml)** with a configurable vehicle entity prefix.
+The examples gallery includes vehicle status, charging, driving-period summaries, Last Drive, battery health, idle/vampire drain, charging costs, Supercharging, tire pressure, navigation, software/alerts, lifetime analytics, and the new **Drive Energy Factors** card. Drive Energy Factors places actual last-drive battery use and efficiency beside outside/cabin temperature, speed, AP/FSD use, battery-pack temperature, and month/year efficiency comparisons so consumption can be viewed in context without implying a single factor caused a specific amount of battery loss.
+
+Version 0.4.0 also includes a reusable **[Tesla-style Lifetime card YAML](examples/lifetime-card.yaml)** with a configurable vehicle entity prefix.
 
 <p align="center">
   <a href="examples/README.md">
-    <img src="examples/screenshots/drivefactors.png" alt="Battery analytics card example" width="360">
+    <img src="examples/screenshots/drivefactors.png" alt="Drive Energy Factors analytics card example" width="360">
   </a>
 </p>
 
-<p align="center"><sub>Battery analytics example — click the card to view the full gallery.</sub></p>
+<p align="center"><sub>Drive Energy Factors example — click the card to view the full gallery.</sub></p>
 
 ## Vehicle naming
 
@@ -376,7 +378,7 @@ Lifetime drive, charge, idle, and battery-health datasets are fetched independen
 
 An optional endpoint failure is isolated from the core drive/charging coordinator when possible, so a temporary battery-health, history, path, firmware, lifetime-history, or fleet-only endpoint problem should not make the main drive sensors unavailable. Authentication failures still trigger Home Assistant's reauthentication flow.
 
-## Recorder and storage considerations
+## recorder and storage considerations
 
 The optional last-drive route entity can expose GPS path points as attributes. It is disabled by default and limits the stored route to at most 200 points to reduce Home Assistant recorder/database growth.
 
