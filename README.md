@@ -48,7 +48,7 @@ The examples gallery includes screenshots for vehicle status, charging, driving 
 
 <p align="center">
   <a href="examples/README.md">
-    <img src="examples/screenshots/battery.png" alt="Battery analytics card example" width="360">
+    <img src="examples/screenshots/drivefactors.png" alt="Battery analytics card example" width="360">
   </a>
 </p>
 
