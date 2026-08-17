@@ -56,6 +56,9 @@ The comparison indicators are intended as **context**, not as a claim that any s
 
 ![Drive Energy Factors](screenshots/drivefactors.png)
 
+<details>
+<summary>Copy YAML</summary>
+  
 ```yaml
 type: custom:button-card
 grid_options:
@@ -443,6 +446,7 @@ custom_fields:
 </details>
 
 ---
+
 ## Battery
 
 Battery health, degradation, current/original capacity, maximum range, module temperatures, and long-term capacity/range changes.
