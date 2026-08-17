@@ -17,10 +17,15 @@ from .sensor_battery import SENSORS as BATTERY_SENSORS
 from .sensor_charge_idle import SENSORS as CHARGE_IDLE_SENSORS
 from .sensor_common import TessieSensorEntityDescription, _invoice_currency
 from .sensor_drive import SENSORS as DRIVE_SENSORS
+from .sensor_lifetime import SENSORS as LIFETIME_SENSORS
 from .sensor_vehicle import SENSORS as VEHICLE_SENSORS
 
 SENSORS_TUPLE = tuple(
-    DRIVE_SENSORS + CHARGE_IDLE_SENSORS + BATTERY_SENSORS + VEHICLE_SENSORS
+    DRIVE_SENSORS
+    + CHARGE_IDLE_SENSORS
+    + BATTERY_SENSORS
+    + LIFETIME_SENSORS
+    + VEHICLE_SENSORS
 )
 
 
