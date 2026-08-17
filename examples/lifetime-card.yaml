@@ -1,0 +1,348 @@
+# Tesla-style Lifetime card for Tessie Drive Stats v0.4.0
+#
+# Requirements:
+# - custom:button-card
+#
+# Change `prefix` to the actual entity prefix Home Assistant assigned to your vehicle.
+# Example: sensor.car_coaster
+
+type: custom:button-card
+
+variables:
+  prefix: sensor.my_tesla
+
+grid_options:
+  columns: 12
+
+show_name: false
+show_icon: false
+show_state: false
+show_label: false
+
+triggers_update: all
+
+tap_action:
+  action: none
+
+hold_action:
+  action: none
+
+styles:
+  card:
+    - width: 100%
+    - min-width: 0
+    - padding: 16px
+    - border-radius: 22px
+    - box-sizing: border-box
+    - overflow: hidden
+    - background: '#14171a'
+    - border: 1px solid '#272b2f'
+    - box-shadow: none
+    - color: '#f4f4f4'
+  grid:
+    - grid-template-areas: '"main"'
+    - grid-template-columns: minmax(0, 1fr)
+    - grid-template-rows: auto
+  custom_fields:
+    main:
+      - width: 100%
+      - min-width: 0
+
+custom_fields:
+  main: |
+    [[[
+      const prefix = variables.prefix || 'sensor.my_tesla';
+      const entity = key => states[`${prefix}_${key}`];
+
+      const value = (key, fallbackUnit = '') => {
+        const e = entity(key);
+        if (!e || ['unknown', 'unavailable', ''].includes(e.state)) {
+          return { value: '—', unit: '', muted: true };
+        }
+
+        const unit = e.attributes?.unit_of_measurement || fallbackUnit;
+        const n = Number(e.state);
+        let output = e.state;
+
+        if (Number.isFinite(n)) {
+          if (unit === 'mi' || unit === 'kWh') {
+            output = n.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            });
+          } else if (unit === '%' || unit === 'mph' || unit === '°F' || unit === '°C') {
+            output = n.toLocaleString(undefined, {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1
+            });
+          } else if (unit === 'min') {
+            const minutes = Math.abs(n);
+            if (minutes >= 1440) {
+              const days = Math.floor(minutes / 1440);
+              const hours = Math.floor((minutes % 1440) / 60);
+              output = `${n < 0 ? '-' : ''}${days}d ${hours}h`;
+              return { value: output, unit: '', muted: false };
+            }
+            if (minutes >= 60) {
+              const hours = Math.floor(minutes / 60);
+              const mins = Math.round(minutes % 60);
+              output = `${n < 0 ? '-' : ''}${hours}h ${mins}m`;
+              return { value: output, unit: '', muted: false };
+            }
+            output = n.toFixed(1);
+          } else {
+            output = n.toLocaleString(undefined, {
+              maximumFractionDigits: Number.isInteger(n) ? 0 : 1
+            });
+          }
+        } else if (e.attributes?.device_class === 'timestamp' || String(e.state).includes('T')) {
+          const d = new Date(e.state);
+          if (!Number.isNaN(d.getTime())) {
+            output = d.toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            });
+          }
+        }
+
+        return { value: output, unit, muted: false };
+      };
+
+      const metric = (key, label, icon, fallbackUnit = '') => {
+        const v = value(key, fallbackUnit);
+        return `
+          <div class="metric">
+            <div class="metric-icon"><ha-icon icon="${icon}"></ha-icon></div>
+            <div class="metric-copy">
+              <div class="metric-label">${label}</div>
+              <div class="metric-value ${v.muted ? 'muted' : ''}">
+                ${v.value}${v.unit ? `<span>${v.unit}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      };
+
+      const vehicleOdometer = value('lifetime_odometer', 'mi');
+      const vehicleEnergy = value('lifetime_energy_used', 'kWh');
+      const recordedSince = value('recorded_lifetime_data_since');
+
+      return `
+        <style>
+          .life-card {
+            --bg: #14171a;
+            --tile: #1a1d20;
+            --tile2: #202428;
+            --border: #272b2f;
+            --soft: rgba(255,255,255,.06);
+            --text: #f4f4f4;
+            --secondary: #969ba1;
+            --muted: #666c72;
+            --red: #e82127;
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+          }
+          .header {
+            display: grid;
+            grid-template-columns: 42px minmax(0,1fr) auto;
+            gap: 11px;
+            align-items: center;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--soft);
+          }
+          .header-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: rgba(232,33,39,.10);
+            border: 1px solid rgba(232,33,39,.20);
+          }
+          .header-icon ha-icon { width: 23px; height: 23px; color: var(--red); }
+          .title { font-size: 20px; line-height: 1; font-weight: 700; }
+          .subtitle { margin-top: 5px; font-size: 9px; color: var(--secondary); }
+          .since {
+            padding: 6px 9px;
+            border-radius: 9px;
+            background: var(--tile);
+            border: 1px solid var(--border);
+            font-size: 8px;
+            color: var(--secondary);
+            white-space: nowrap;
+          }
+          .since strong { color: var(--text); font-size: 10px; }
+          .hero {
+            display: grid;
+            grid-template-columns: repeat(2,minmax(0,1fr));
+            gap: 7px;
+            margin-bottom: 12px;
+          }
+          .hero-tile {
+            min-width: 0;
+            padding: 13px;
+            border-radius: 14px;
+            background: #111315;
+            border: 1px solid var(--border);
+          }
+          .hero-label {
+            margin-bottom: 5px;
+            font-size: 8px;
+            font-weight: 650;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            color: var(--secondary);
+          }
+          .hero-value {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 23px;
+            line-height: 1;
+            font-weight: 700;
+          }
+          .hero-value span { margin-left: 4px; font-size: 9px; font-weight: 500; color: var(--secondary); }
+          .section { margin-top: 11px; }
+          .section-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            color: var(--secondary);
+          }
+          .section-title ha-icon { width: 15px; height: 15px; color: var(--red); }
+          .grid {
+            display: grid;
+            grid-template-columns: repeat(3,minmax(0,1fr));
+            gap: 5px;
+          }
+          .metric {
+            min-width: 0;
+            display: grid;
+            grid-template-columns: 28px minmax(0,1fr);
+            gap: 7px;
+            align-items: center;
+            padding: 8px;
+            border-radius: 10px;
+            background: var(--tile);
+            border: 1px solid var(--soft);
+          }
+          .metric-icon {
+            width: 27px;
+            height: 27px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: var(--tile2);
+          }
+          .metric-icon ha-icon { width: 15px; height: 15px; color: #d5d7da; }
+          .metric-copy { min-width: 0; }
+          .metric-label {
+            margin-bottom: 3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 7px;
+            color: var(--secondary);
+          }
+          .metric-value {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+            line-height: 1;
+            font-weight: 700;
+          }
+          .metric-value span { margin-left: 2px; font-size: 7px; font-weight: 500; color: var(--secondary); }
+          .metric-value.muted { color: var(--muted); }
+          @media (max-width: 700px) {
+            .grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+            .header { grid-template-columns: 38px minmax(0,1fr); }
+            .since { grid-column: 1 / -1; width: fit-content; }
+          }
+        </style>
+
+        <div class="life-card">
+          <div class="header">
+            <div class="header-icon"><ha-icon icon="mdi:history"></ha-icon></div>
+            <div>
+              <div class="title">Lifetime</div>
+              <div class="subtitle">Vehicle lifetime + Tessie recorded history</div>
+            </div>
+            <div class="since">Recorded since <strong>${recordedSince.value}</strong></div>
+          </div>
+
+          <div class="hero">
+            <div class="hero-tile">
+              <div class="hero-label">Vehicle Odometer</div>
+              <div class="hero-value">${vehicleOdometer.value}<span>${vehicleOdometer.unit}</span></div>
+            </div>
+            <div class="hero-tile">
+              <div class="hero-label">Vehicle Lifetime Energy</div>
+              <div class="hero-value">${vehicleEnergy.value}<span>${vehicleEnergy.unit}</span></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title"><ha-icon icon="mdi:car"></ha-icon>Recorded Driving</div>
+            <div class="grid">
+              ${metric('recorded_lifetime_drives','Drives','mdi:car-multiple')}
+              ${metric('recorded_lifetime_miles','Miles','mdi:road-variant','mi')}
+              ${metric('recorded_lifetime_drive_time','Drive Time','mdi:clock-outline','min')}
+              ${metric('recorded_lifetime_drive_energy','Drive Energy','mdi:lightning-bolt','kWh')}
+              ${metric('recorded_lifetime_efficiency','Efficiency','mdi:gauge','Wh/mi')}
+              ${metric('recorded_lifetime_average_speed','Average Speed','mdi:speedometer-medium','mph')}
+              ${metric('recorded_lifetime_max_speed','Max Speed','mdi:speedometer','mph')}
+              ${metric('recorded_lifetime_longest_drive','Longest Drive','mdi:map-marker-distance','mi')}
+              ${metric('recorded_lifetime_ap_fsd_miles','AP / FSD Miles','mdi:steering','mi')}
+              ${metric('recorded_lifetime_ap_fsd_share','AP / FSD Share','mdi:chart-donut','%')}
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title"><ha-icon icon="mdi:ev-station"></ha-icon>Recorded Charging</div>
+            <div class="grid">
+              ${metric('recorded_lifetime_charge_sessions','Charge Sessions','mdi:ev-plug-tesla')}
+              ${metric('recorded_lifetime_charge_energy_added','Energy Added','mdi:battery-charging','kWh')}
+              ${metric('recorded_lifetime_charge_cost','Charge Cost','mdi:currency-usd')}
+              ${metric('recorded_lifetime_supercharger_sessions','Supercharger Sessions','mdi:ev-station')}
+              ${metric('recorded_lifetime_supercharger_energy','Supercharger Energy','mdi:lightning-bolt-circle','kWh')}
+              ${metric('recorded_lifetime_supercharger_cost','Supercharger Cost','mdi:currency-usd')}
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title"><ha-icon icon="mdi:power-sleep"></ha-icon>Recorded Idle / Vampire Drain</div>
+            <div class="grid">
+              ${metric('recorded_lifetime_idle_sessions','Idle Sessions','mdi:power-sleep')}
+              ${metric('recorded_lifetime_idle_time','Idle Time','mdi:timer-sand','min')}
+              ${metric('recorded_lifetime_idle_energy','Idle Energy','mdi:battery-arrow-down-outline','kWh')}
+              ${metric('recorded_lifetime_idle_battery_used','Battery Used','mdi:battery-minus','%')}
+              ${metric('recorded_lifetime_sentry_time','Sentry Time','mdi:shield-car','min')}
+              ${metric('recorded_lifetime_climate_time','Climate Time','mdi:fan-clock','min')}
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title"><ha-icon icon="mdi:battery-heart-variant"></ha-icon>Recorded Battery History</div>
+            <div class="grid">
+              ${metric('oldest_battery_capacity','Oldest Capacity','mdi:battery-clock','kWh')}
+              ${metric('recorded_lifetime_capacity_change','Capacity Change','mdi:chart-line','kWh')}
+              ${metric('oldest_battery_max_range','Oldest Max Range','mdi:map-marker-distance','mi')}
+              ${metric('recorded_lifetime_max_range_change','Max Range Change','mdi:chart-line','mi')}
+              ${metric('recorded_lifetime_battery_measurements','Measurements','mdi:chart-timeline-variant')}
+              ${metric('battery_history_since','History Since','mdi:calendar-start')}
+            </div>
+          </div>
+        </div>
+      `;
+    ]]]
