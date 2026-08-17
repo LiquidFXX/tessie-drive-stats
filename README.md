@@ -1,6 +1,6 @@
 # Tessie Drive Stats for Home Assistant
 
-A HACS-ready Home Assistant custom integration for Tesla analytics backed by Tessie. It turns Tessie drive, charging, idle, consumption, battery, tire, navigation, software, historical-state, and optional fleet-invoice data into native Home Assistant entities.
+A HACS-ready Home Assistant custom integration for Tesla analytics backed by Tessie. It turns Tessie drive, charging, idle, consumption, battery, tire, navigation, software, lifetime-history, and optional fleet-invoice data into native Home Assistant entities.
 
 Tessie Drive Stats is intended to complement the normal Tessie/Home Assistant vehicle integration. It focuses on history, totals, derived analytics, and diagnostic data rather than vehicle controls.
 
@@ -15,15 +15,28 @@ Tessie Drive Stats is intended to complement the normal Tessie/Home Assistant ve
 - Configurable first day of week.
 - Uses Home Assistant's configured timezone for day/week/month/year boundaries.
 - Preserves existing VIN-based unique IDs when upgrading from earlier beta versions.
-- Adds more than 200 sensor definitions plus tire-pressure warning binary sensors.
+- Adds **247 sensor definitions plus 4 tire-pressure warning binary sensors**.
+- Includes persistent lifetime driving, charging, Supercharging, idle/vampire-drain, and battery-health history analytics.
 - Niche, recorder-heavy, best-effort, and fleet-only entities are disabled by default where appropriate.
 - Diagnostics redact the Tessie access token and intentionally omit addresses, coordinates, and driving-path points.
+- The persistent lifetime cache is privacy-minimized and does not store historical street addresses or GPS coordinates.
 
 ## Analytics included
 
-Tessie Drive Stats includes driving totals, AP/FSD distance, charging and Supercharger costs, idle/vampire-drain analytics, consumption since charge, battery telemetry and health trends, tire pressure, navigation, software information, firmware alerts, observed sleep/activity estimates, and optional fleet Supercharger invoice data.
+Tessie Drive Stats includes driving totals, AP/FSD distance, charging and Supercharger costs, idle/vampire-drain analytics, consumption since charge, battery telemetry and health trends, tire pressure, navigation, software information, firmware alerts, observed sleep/activity estimates, lifetime history, and optional fleet Supercharger invoice data.
 
 Tessie exposes one drive-history field named `autopilot_distance`. It does not distinguish legacy Autopilot from FSD, so the integration deliberately reports **combined AP/FSD distance** rather than inventing a split Tessie does not provide.
+
+## Lifetime analytics
+
+Version 0.4.0 distinguishes two types of lifetime data:
+
+- **Vehicle lifetime** — counters Tessie reports directly from the vehicle, such as odometer and `lifetime_energy_used`.
+- **Tessie recorded lifetime** — totals calculated from all drive, charge, idle, and battery-health history available in Tessie.
+
+Recorded-lifetime values are intentionally labeled **Recorded lifetime** because Tessie may have started collecting data after the vehicle was purchased. Coverage sensors such as `recorded_lifetime_data_since`, `recorded_lifetime_driving_since`, and `battery_history_since` show how far back the available Tessie history actually goes.
+
+On the first v0.4.0 refresh, the integration performs a one-time historical backfill. It stores only the fields required for lifetime calculations in Home Assistant storage. After that it refreshes lifetime history about every 6 hours using a short overlap window, with a full reconciliation about every 30 days to pick up edited historical values such as charging costs.
 
 ## Dashboard & card examples
 
@@ -31,7 +44,7 @@ Want to see what Tessie Drive Stats can look like in Home Assistant?
 
 **[View the Tesla-inspired dashboard and card examples →](examples/README.md)**
 
-The examples gallery includes screenshots for vehicle status, charging, driving periods, Last Drive, battery health, idle/vampire drain, charging costs, Supercharging, tire pressure, navigation, and software/alerts.
+The examples gallery includes screenshots for vehicle status, charging, driving periods, Last Drive, battery health, idle/vampire drain, charging costs, Supercharging, tire pressure, navigation, and software/alerts. Version 0.4.0 also includes a reusable **[Tesla-style Lifetime card YAML](examples/lifetime-card.yaml)** with a configurable vehicle entity prefix.
 
 <p align="center">
   <a href="examples/README.md">
@@ -56,9 +69,9 @@ Home Assistant preserves entity IDs that were already registered, so renaming a 
 
 ## Example entity IDs and values
 
-The table below is the complete v0.3.0 entity catalog using a fictional vehicle named **My Tesla**.
+The table below is the complete v0.4.0 entity catalog using a fictional vehicle named **My Tesla**.
 
-**All values are illustrative examples only.** Actual states depend on the vehicle, Tessie data availability, Home Assistant unit settings, and account type. An unavailable Tessie field may appear as `unknown` or `unavailable` instead of the example shown.
+**All values are illustrative examples only.** Actual states depend on the vehicle, Tessie data availability, Home Assistant unit settings, account type, and the date Tessie began recording the vehicle. An unavailable Tessie field may appear as `unknown` or `unavailable` instead of the example shown.
 
 Entities marked **Disabled** are disabled by default and can be enabled from **Settings → Devices & services → Tessie Drive Stats → your vehicle → Entities**.
 
@@ -240,6 +253,54 @@ Entities marked **Disabled** are disabled by default and can be enabled from **S
 | `sensor.my_tesla_battery_max_range_change_30_days` | `-0.8 mi` | Enabled |
 | `sensor.my_tesla_battery_max_range_change_this_year` | `-4.6 mi` | Enabled |
 
+### Lifetime — vehicle and Tessie recorded history
+
+`lifetime_odometer` and the existing `lifetime_energy_used` sensor are vehicle-lifetime counters. Sensors beginning with `recorded_lifetime_` summarize only the historical records available from Tessie.
+
+| Entity ID | Example value | Default |
+|---|---:|---|
+| `sensor.my_tesla_lifetime_odometer` | `81485.3 mi` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_data_since` | `2024-01-03 08:14:00` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_driving_since` | `2024-01-03 08:14:00` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_charging_since` | `2024-01-03 21:36:00` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_idle_since` | `2024-01-03 09:02:00` | Enabled |
+| `sensor.my_tesla_battery_history_since` | `2024-02-11 12:00:00` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_last_synced` | `2026-08-17 10:00:00` | Disabled |
+| `sensor.my_tesla_recorded_lifetime_drives` | `1580` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_miles` | `18432.64 mi` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_drive_time` | `35124.7 min` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_drive_energy` | `4326.20 kWh` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_efficiency` | `235 Wh/mi` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_ap_fsd_miles` | `12746.30 mi` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_ap_fsd_share` | `69.2 %` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_average_speed` | `31.5 mph` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_max_speed` | `92 mph` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_longest_drive` | `247.38 mi` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_rated_range_used` | `19624.80 mi` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_average_inside_temperature` | `71.5 °F` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_average_outside_temperature` | `74.8 °F` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_charge_sessions` | `642` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_charge_energy_added` | `12684.50 kWh` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_charge_energy_used` | `13210.30 kWh` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_charge_cost` | `$1268.42` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_supercharger_sessions` | `24` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_supercharger_energy` | `810.42 kWh` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_supercharger_cost` | `$286.55` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_idle_sessions` | `940` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_idle_time` | `214620.0 min` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_idle_energy` | `2480.64 kWh` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_idle_battery_used` | `3372.0 %` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_idle_rated_range_used` | `10482.40 mi` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_sentry_time` | `112430.0 min` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_climate_time` | `16842.0 min` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_battery_measurements` | `174` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_capacity_change` | `-3.48 kWh` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_max_range_change` | `-12.20 mi` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_max_ideal_range_change` | `-13.40 mi` | Enabled |
+| `sensor.my_tesla_oldest_battery_capacity` | `67.19 kWh` | Enabled |
+| `sensor.my_tesla_oldest_battery_max_range` | `313.99 mi` | Enabled |
+| `sensor.my_tesla_oldest_battery_max_ideal_range` | `276.49 mi` | Enabled |
+
 ### Vehicle, tires, software, activity, and fleet
 
 | Entity ID | Example value | Default |
@@ -297,7 +358,7 @@ Entities marked **Disabled** are disabled by default and can be enabled from **S
 | `binary_sensor.my_tesla_tire_pressure_low_rear_left` | `off` | Pressure not reported low |
 | `binary_sensor.my_tesla_tire_pressure_low_rear_right` | `off` | Pressure not reported low |
 
-That is the complete v0.3.0 catalog: **206 sensor entities plus 4 tire-pressure warning binary sensors**.
+That is the complete v0.4.0 catalog: **247 sensor entities plus 4 tire-pressure warning binary sensors**.
 
 ## Update cadence and API load
 
@@ -307,13 +368,19 @@ The configured refresh interval controls the core drive/charging refresh and cur
 - Historical idles and firmware alerts: about every 1 hour
 - Historical state/activity samples: about every 30 minutes
 - Battery health, battery-health history, and fleet invoices: about every 6 hours
+- Lifetime history: one full backfill on first v0.4.0 refresh, then incremental refreshes about every 6 hours with a 2-day overlap
+- Lifetime full reconciliation: about every 30 days
 - Last-drive route: fetched when the latest drive changes
 
-An optional endpoint failure is isolated from the core drive/charging coordinator when possible, so a temporary battery-health, history, path, firmware, or fleet-only endpoint problem should not make the main drive sensors unavailable. Authentication failures still trigger Home Assistant's reauthentication flow.
+Lifetime drive, charge, idle, and battery-health datasets are fetched independently. A failure in one lifetime endpoint preserves the last good cached data for the other datasets rather than discarding the entire lifetime cache.
 
-## Recorder considerations
+An optional endpoint failure is isolated from the core drive/charging coordinator when possible, so a temporary battery-health, history, path, firmware, lifetime-history, or fleet-only endpoint problem should not make the main drive sensors unavailable. Authentication failures still trigger Home Assistant's reauthentication flow.
+
+## Recorder and storage considerations
 
 The optional last-drive route entity can expose GPS path points as attributes. It is disabled by default and limits the stored route to at most 200 points to reduce Home Assistant recorder/database growth.
+
+Version 0.4.0 also stores a compact lifetime-history cache using Home Assistant storage. The cache retains only the record IDs/timestamps and numeric/statistical fields required for lifetime calculations. Historical addresses, saved locations, latitude, longitude, and driving-path points are intentionally excluded from the lifetime cache.
 
 ## Install through HACS as a custom repository
 
@@ -331,9 +398,11 @@ You may paste either the raw Tessie token or `Bearer <token>`; the integration n
 
 ## Updating from an earlier beta
 
-Version 0.3.0 preserves the existing VIN-based unique IDs for earlier sensors and adds the new analytics as additional entities. After updating through HACS, restart Home Assistant so the new `sensor` and `binary_sensor` platforms/entities are registered.
+Version 0.4.0 preserves the existing VIN-based unique IDs for earlier sensors and adds lifetime analytics as additional entities. After updating through HACS, restart Home Assistant so the new entities are registered.
 
-Some diagnostic, route, observed-activity, tire-status, and fleet-invoice entities are disabled by default. Enable any of them from the vehicle's entity list if you want to use them.
+The first v0.4.0 refresh may take longer than normal while Tessie history is backfilled. Once complete, the compact lifetime cache persists across Home Assistant restarts and subsequent lifetime updates are incremental.
+
+Some diagnostic, route, observed-activity, tire-status, fleet-invoice, and lifetime-sync entities are disabled by default. Enable any of them from the vehicle's entity list if you want to use them.
 
 ## Migrating from REST YAML sensors
 
@@ -344,6 +413,8 @@ The normal Tessie vehicle integration can remain installed. Tessie Drive Stats u
 ## Privacy
 
 The integration stores the Tessie access token in the Home Assistant config entry as required for API access. Diagnostics redact the token and avoid returning street addresses, GPS coordinates, or route points.
+
+The v0.4.0 lifetime cache is privacy-minimized: it stores only fields required to calculate lifetime statistics and intentionally excludes historical addresses, saved-location names, GPS coordinates, and route paths.
 
 Normal Home Assistant entity states may still contain user-requested data such as last-drive locations or navigation destinations. Treat downloaded diagnostics and screenshots according to your own privacy requirements.
 
@@ -361,8 +432,8 @@ If you're signing up for Tessie and would like to support this project, you can 
 
 ## Development validation
 
-The repository includes synthetic calculation tests. No real VIN, trip address, or access token is included in the test fixtures.
+The repository includes synthetic calculation and lifetime-cache tests. GitHub Actions compiles the integration and runs the test suite on repository validation runs. No real VIN, trip address, or access token is included in the test fixtures.
 
 ## Version
 
-0.3.0
+0.4.0
