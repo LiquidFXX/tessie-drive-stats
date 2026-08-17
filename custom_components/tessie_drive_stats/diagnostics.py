@@ -44,6 +44,17 @@ async def async_get_config_entry_diagnostics(
                 if isinstance(data.get("charging_invoices"), list)
                 else None
             ),
+            "lifetime_cache": {
+                "drives": len(data.get("lifetime_drives", [])),
+                "charges": len(data.get("lifetime_charges", [])),
+                "idles": len(data.get("lifetime_idles", [])),
+                "battery_health_measurements": len(
+                    data.get("lifetime_battery_health", [])
+                ),
+                "synced_at": data.get("lifetime_synced_at", {}),
+                "full_synced_at": data.get("lifetime_full_synced_at", {}),
+                "privacy_minimized": True,
+            },
             "boundaries": data.get("boundaries", {}),
             "cache_updated": data.get("cache_updated", {}),
             "vehicle_status": (data.get("status") or {}).get("status"),
