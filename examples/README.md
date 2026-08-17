@@ -2,7 +2,7 @@
 
 This gallery shows the Tesla-inspired Home Assistant dashboard cards built with Tessie Drive Stats entities.
 
-The screenshots below are the actual cards from the current example dashboard. File names now match the card titles instead of timestamp-based screenshot names.
+The screenshots below are the actual cards from the current example dashboard. File names match the visible card titles instead of timestamp-based screenshot names.
 
 > **Privacy note:** Screenshots can contain addresses, navigation destinations, VINs, GPS coordinates, access tokens, or other personal information. Review and redact location data before publishing new examples.
 
@@ -47,6 +47,14 @@ Today's drive count, miles, energy, drive time, efficiency, battery use, AP/FSD 
 Most recent completed trip with distance, time, energy, efficiency, AP/FSD, speed, battery usage, temperatures, range use, route details, and path-point count.
 
 ![Last Drive](screenshots/last-drive.png)
+
+## Drive Energy Factors
+
+A focused consumption-context card for understanding the conditions around the most recent drive. It combines actual battery use, energy consumed, efficiency, and battery-per-mile with outside/cabin temperature, speed, AP/FSD use, battery-pack temperatures, and month/year efficiency comparisons.
+
+The comparison indicators are intended as **context**, not as a claim that any single temperature, speed, or driving condition caused a specific percentage of battery loss.
+
+![Drive Energy Factors](screenshots/drivefactors.png)
 
 ## Since Last Charge
 
@@ -126,6 +134,8 @@ Use short, descriptive, lowercase filenames that match the visible card title. E
 
 - `vehicle.png`
 - `driving-this-month.png`
+- `last-drive.png`
+- `drivefactors.png`
 - `since-last-charge.png`
 - `lifetime.png`
 - `idle-this-year.png`
