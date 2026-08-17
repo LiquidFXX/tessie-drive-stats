@@ -60,6 +60,14 @@ Battery health, degradation, current/original capacity, maximum range, module te
 
 ![Battery](screenshots/battery.png)
 
+## Lifetime
+
+Version 0.4.0 adds a Tesla-style Lifetime card that separates **true vehicle lifetime counters** from **Tessie recorded lifetime** history. The public example uses a configurable entity prefix so it can be reused with any vehicle.
+
+**[View the Lifetime card YAML →](lifetime-card.yaml)**
+
+The card includes vehicle odometer and lifetime energy, recorded driving/AP-FSD totals, charging and Supercharging totals, idle/vampire-drain totals, and battery-history changes. Once a public-safe screenshot is available, it can be added here as `screenshots/lifetime.png`.
+
 ## Idle — Today
 
 ![Idle Today](screenshots/idle-today.png)
@@ -119,6 +127,7 @@ Use short, descriptive, lowercase filenames that match the visible card title. E
 - `vehicle.png`
 - `driving-this-month.png`
 - `since-last-charge.png`
+- `lifetime.png`
 - `idle-this-year.png`
 - `charging-cost.png`
 - `software.png`
