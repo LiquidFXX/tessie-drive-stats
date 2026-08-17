@@ -209,12 +209,19 @@ class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ),
         ]
 
-        due: list[tuple[str, Callable[[int], Awaitable[list[dict[str, Any]]]], Any, int, bool]] = []
+        due: list[
+            tuple[
+                str,
+                Callable[[int], Awaitable[list[dict[str, Any]]]],
+                Any,
+                int,
+                bool,
+            ]
+        ] = []
         for name, fetcher, compactor in specs:
-            records = self._lifetime_cache.get(name, {})
             last_sync = int(synced_at.get(name) or 0)
             last_full = int(full_synced_at.get(name) or 0)
-            full_refresh = not records or last_full <= 0 or now_timestamp - last_full >= full_seconds
+            full_refresh = last_full <= 0 or now_timestamp - last_full >= full_seconds
 
             if not full_refresh and last_sync > 0 and now_timestamp - last_sync < update_seconds:
                 continue
@@ -229,7 +236,9 @@ class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
 
             changed = False
-            for (name, _, compactor, _, full_refresh), response in zip(due, responses, strict=True):
+            for (name, _, compactor, _, full_refresh), response in zip(
+                due, responses, strict=True
+            ):
                 if isinstance(response, TessieAuthError):
                     raise response
                 if isinstance(response, TessieApiError):
