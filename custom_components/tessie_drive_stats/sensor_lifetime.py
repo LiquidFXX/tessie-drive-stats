@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .calculations import supercharger_records
 from .lifetime import (
     earliest_measurement,
     earliest_timestamp,
