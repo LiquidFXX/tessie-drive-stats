@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 import logging
@@ -10,6 +11,7 @@ from typing import Any, TypeVar
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -23,6 +25,13 @@ from .const import (
     DOMAIN,
     WEEKDAYS,
 )
+from .lifetime import (
+    compact_battery_health,
+    compact_charge,
+    compact_drive,
+    compact_idle,
+    merge_records,
+)
 
 _LOGGER = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -30,6 +39,10 @@ T = TypeVar("T")
 HISTORY_UPDATE_INTERVAL = timedelta(hours=1)
 ACTIVITY_UPDATE_INTERVAL = timedelta(minutes=30)
 SLOW_UPDATE_INTERVAL = timedelta(hours=6)
+LIFETIME_UPDATE_INTERVAL = timedelta(hours=6)
+LIFETIME_FULL_REFRESH_INTERVAL = timedelta(days=30)
+LIFETIME_OVERLAP = timedelta(days=2)
+LIFETIME_STORAGE_VERSION = 1
 
 
 class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -46,6 +59,21 @@ class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._cache: dict[str, Any] = {}
         self._cache_updated: dict[str, datetime] = {}
         self._path_drive_id: Any = None
+
+        self._lifetime_store = Store(
+            hass,
+            LIFETIME_STORAGE_VERSION,
+            f"{DOMAIN}.lifetime.{api.vin.lower()}",
+        )
+        self._lifetime_loaded = False
+        self._lifetime_cache: dict[str, Any] = {
+            "drives": {},
+            "charges": {},
+            "idles": {},
+            "battery_health": {},
+            "synced_at": {},
+            "full_synced_at": {},
+        }
 
         update_minutes = int(
             entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
@@ -110,6 +138,135 @@ class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         return self._cache.get(key, default)
 
+    async def _async_load_lifetime_cache(self) -> None:
+        """Load persisted lifetime history cache once per coordinator lifetime."""
+        if self._lifetime_loaded:
+            return
+
+        stored = await self._lifetime_store.async_load()
+        if isinstance(stored, dict):
+            for collection in ("drives", "charges", "idles", "battery_health"):
+                value = stored.get(collection)
+                if isinstance(value, dict):
+                    self._lifetime_cache[collection] = value
+            for key in ("synced_at", "full_synced_at"):
+                value = stored.get(key)
+                if isinstance(value, dict):
+                    self._lifetime_cache[key] = value
+
+        self._lifetime_loaded = True
+
+    async def _async_lifetime_history(
+        self,
+        *,
+        now_timestamp: int,
+        timezone: str,
+    ) -> dict[str, Any]:
+        """Backfill and incrementally refresh privacy-minimized lifetime history."""
+        await self._async_load_lifetime_cache()
+
+        synced_at: dict[str, Any] = self._lifetime_cache["synced_at"]
+        full_synced_at: dict[str, Any] = self._lifetime_cache["full_synced_at"]
+        update_seconds = int(LIFETIME_UPDATE_INTERVAL.total_seconds())
+        full_seconds = int(LIFETIME_FULL_REFRESH_INTERVAL.total_seconds())
+        overlap_seconds = int(LIFETIME_OVERLAP.total_seconds())
+
+        specs: list[tuple[str, Callable[[int], Awaitable[list[dict[str, Any]]]], Any]] = [
+            (
+                "drives",
+                lambda start: self.api.async_get_drives(
+                    from_timestamp=start,
+                    to_timestamp=now_timestamp,
+                    timezone=timezone,
+                ),
+                compact_drive,
+            ),
+            (
+                "charges",
+                lambda start: self.api.async_get_charges(
+                    from_timestamp=start,
+                    to_timestamp=now_timestamp,
+                    timezone=timezone,
+                ),
+                compact_charge,
+            ),
+            (
+                "idles",
+                lambda start: self.api.async_get_idles(
+                    from_timestamp=start,
+                    to_timestamp=now_timestamp,
+                    timezone=timezone,
+                ),
+                compact_idle,
+            ),
+            (
+                "battery_health",
+                lambda start: self.api.async_get_battery_health_measurements(
+                    from_timestamp=start,
+                    to_timestamp=now_timestamp,
+                ),
+                compact_battery_health,
+            ),
+        ]
+
+        due: list[tuple[str, Callable[[int], Awaitable[list[dict[str, Any]]]], Any, int, bool]] = []
+        for name, fetcher, compactor in specs:
+            records = self._lifetime_cache.get(name, {})
+            last_sync = int(synced_at.get(name) or 0)
+            last_full = int(full_synced_at.get(name) or 0)
+            full_refresh = not records or last_full <= 0 or now_timestamp - last_full >= full_seconds
+
+            if not full_refresh and last_sync > 0 and now_timestamp - last_sync < update_seconds:
+                continue
+
+            start = 0 if full_refresh else max(0, last_sync - overlap_seconds)
+            due.append((name, fetcher, compactor, start, full_refresh))
+
+        if due:
+            responses = await asyncio.gather(
+                *(fetcher(start) for _, fetcher, _, start, _ in due),
+                return_exceptions=True,
+            )
+
+            changed = False
+            for (name, _, compactor, _, full_refresh), response in zip(due, responses, strict=True):
+                if isinstance(response, TessieAuthError):
+                    raise response
+                if isinstance(response, TessieApiError):
+                    _LOGGER.warning("Unable to update Tessie lifetime %s: %s", name, response)
+                    continue
+                if isinstance(response, BaseException):
+                    _LOGGER.warning("Unexpected Tessie lifetime %s error: %s", name, response)
+                    continue
+
+                current = self._lifetime_cache.get(name, {})
+                self._lifetime_cache[name] = merge_records(
+                    current if isinstance(current, dict) else {},
+                    response,
+                    compactor,
+                    replace=full_refresh,
+                )
+                synced_at[name] = now_timestamp
+                if full_refresh:
+                    full_synced_at[name] = now_timestamp
+                changed = True
+
+            if changed:
+                await self._lifetime_store.async_save(self._lifetime_cache)
+
+        return {
+            "lifetime_drives": list(self._lifetime_cache.get("drives", {}).values()),
+            "lifetime_charges": list(self._lifetime_cache.get("charges", {}).values()),
+            "lifetime_idles": list(self._lifetime_cache.get("idles", {}).values()),
+            "lifetime_battery_health": list(
+                self._lifetime_cache.get("battery_health", {}).values()
+            ),
+            "lifetime_synced_at": dict(self._lifetime_cache.get("synced_at", {})),
+            "lifetime_full_synced_at": dict(
+                self._lifetime_cache.get("full_synced_at", {})
+            ),
+        }
+
     async def _async_last_drive_path(
         self,
         last_drive: dict[str, Any] | None,
@@ -153,7 +310,6 @@ class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         now_dt = dt_util.now()
 
         try:
-            # Core historical data. These retain the existing integration behavior.
             drives_ytd = await self.api.async_get_drives(
                 from_timestamp=boundaries["year"],
                 to_timestamp=boundaries["now"],
@@ -187,7 +343,6 @@ class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     )
                 )
 
-            # Current data. Failures here do not make drive history unavailable.
             battery = await self._cached_optional(
                 "battery", self.api.async_get_battery, now_dt, None, {}
             )
@@ -207,7 +362,6 @@ class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "last_idle_state", self.api.async_get_last_idle_state, now_dt, None, {}
             )
 
-            # Heavier history refreshes less frequently.
             async def fetch_idles() -> list[dict[str, Any]]:
                 idles = await self.api.async_get_idles(
                     from_timestamp=boundaries["year"],
@@ -245,7 +399,6 @@ class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 [],
             )
 
-            # Slow-changing battery and fleet-account data.
             battery_health = await self._cached_optional(
                 "battery_health",
                 self.api.async_get_battery_health,
@@ -275,6 +428,10 @@ class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 None,
             )
 
+            lifetime = await self._async_lifetime_history(
+                now_timestamp=boundaries["now"],
+                timezone=timezone,
+            )
             last_drive_path = await self._async_last_drive_path(last_drive, now_dt)
 
             return {
@@ -304,6 +461,7 @@ class TessieDriveStatsCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     key: int(value.timestamp())
                     for key, value in self._cache_updated.items()
                 },
+                **lifetime,
             }
 
         except TessieAuthError as err:
