@@ -56,12 +56,393 @@ The comparison indicators are intended as **context**, not as a claim that any s
 
 ![Drive Energy Factors](screenshots/drivefactors.png)
 
-## Since Last Charge
+```yaml
+type: custom:button-card
+grid_options:
+  rows: auto
+show_name: false
+show_icon: false
+show_state: false
+show_label: false
+triggers_update:
+  - sensor.car_coaster_consumption_last_charge_at
+  - sensor.car_coaster_distance_since_charge
+  - sensor.car_coaster_battery_used_since_charge
+  - sensor.car_coaster_battery_used_by_driving_since_charge
+  - sensor.car_coaster_battery_used_non_driving_since_charge
+  - sensor.car_coaster_energy_used_since_charge
+  - sensor.car_coaster_energy_used_by_driving_since_charge
+  - sensor.car_coaster_energy_used_non_driving_since_charge
+  - sensor.car_coaster_driving_energy_share_since_charge
+  - sensor.car_coaster_rated_range_used_since_charge
+  - sensor.car_coaster_rated_range_used_by_driving_since_charge
+  - sensor.car_coaster_ideal_range_used_by_driving_since_charge
+tap_action:
+  action: none
+hold_action:
+  action: none
+styles:
+  card:
+    - width: 100%
+    - min-width: 0
+    - padding: 12px
+    - box-sizing: border-box
+    - overflow: hidden
+    - border-radius: 16px
+    - background: '#14171a'
+    - border: 1px solid "#272b2f"
+    - box-shadow: none
+  grid:
+    - grid-template-areas: '"main"'
+    - grid-template-columns: minmax(0, 1fr)
+    - grid-template-rows: auto
+    - width: 100%
+  custom_fields:
+    main:
+      - width: 100%
+      - min-width: 0
+custom_fields:
+  main: |
+    [[[
+      const ids = ["sensor.car_coaster_consumption_last_charge_at", "sensor.car_coaster_distance_since_charge", "sensor.car_coaster_battery_used_since_charge", "sensor.car_coaster_battery_used_by_driving_since_charge", "sensor.car_coaster_battery_used_non_driving_since_charge", "sensor.car_coaster_energy_used_since_charge", "sensor.car_coaster_energy_used_by_driving_since_charge", "sensor.car_coaster_energy_used_non_driving_since_charge", "sensor.car_coaster_driving_energy_share_since_charge", "sensor.car_coaster_rated_range_used_since_charge", "sensor.car_coaster_rated_range_used_by_driving_since_charge", "sensor.car_coaster_ideal_range_used_by_driving_since_charge"];
 
-Battery, energy, and range consumption since the most recent charge, including driving vs. non-driving use.
+      const suffix = id => {
+        if (id.startsWith('binary_sensor.car_coaster_')) {
+          return id.slice('binary_sensor.car_coaster_'.length);
+        }
+        return id.slice('sensor.car_coaster_'.length);
+      };
 
-![Since Last Charge](screenshots/since-last-charge.png)
+      const label = id => {
+        let name =
+          states[id]?.attributes?.friendly_name ||
+          suffix(id).replace(/_/g, ' ');
 
+        return name
+          .replace(/^Coaster\s*/i, '')
+          .replace(/^Car Coaster\s*/i, '')
+          .replace(/driVINg/gi, 'driving');
+      };
+
+      const iconFor = id => {
+        const name = suffix(id);
+
+        if (id.startsWith('binary_sensor.')) return 'mdi:car-tire-alert';
+        if (name.includes('ap_fsd')) return 'mdi:steering';
+        if (name.includes('tire')) return 'mdi:car-tire-alert';
+        if (name.includes('battery_health')) return 'mdi:battery-heart-variant';
+        if (name.includes('degradation')) return 'mdi:battery-alert-variant-outline';
+        if (name.includes('battery')) return 'mdi:battery';
+        if (name.includes('supercharger')) return 'mdi:ev-station';
+        if (name.includes('charging')) return 'mdi:ev-plug-tesla';
+        if (name.includes('charge')) return 'mdi:battery-charging';
+        if (name.includes('cost') || name.includes('invoice')) return 'mdi:currency-usd';
+        if (name.includes('energy')) return 'mdi:lightning-bolt';
+        if (name.includes('efficiency')) return 'mdi:gauge';
+        if (name.includes('speed')) return 'mdi:speedometer';
+        if (name.includes('time')) return 'mdi:clock-outline';
+        if (name.includes('drives') || name.includes('sessions')) return 'mdi:counter';
+        if (name.includes('miles') || name.includes('range') || name.includes('distance')) return 'mdi:road-variant';
+        if (name.includes('temperature') || name.includes('_temp_')) return 'mdi:thermometer';
+        if (name.includes('sentry')) return 'mdi:shield-car';
+        if (name.includes('climate')) return 'mdi:fan';
+        if (name.includes('navigation')) return 'mdi:navigation-variant';
+        if (name.includes('location') || name.includes('destination') || name.endsWith('_start')) return 'mdi:map-marker';
+        if (name.includes('software')) return 'mdi:update';
+        if (name.includes('firmware') || name.includes('alert')) return 'mdi:alert-outline';
+        if (name.includes('odometer')) return 'mdi:counter';
+        if (name.includes('connection')) return 'mdi:signal';
+        if (name.includes('wake')) return 'mdi:weather-sunset-up';
+        if (name.includes('vehicle_status')) return 'mdi:car-connected';
+        return 'mdi:information-outline';
+      };
+
+      const format = id => {
+        const entity = states[id];
+
+        if (!entity) {
+          return { value: '—', unit: '', cls: 'muted' };
+        }
+
+        const raw = String(entity.state ?? '').trim();
+
+        if (!raw || raw === 'unknown' || raw === 'unavailable') {
+          return { value: '—', unit: '', cls: 'muted' };
+        }
+
+        if (id.startsWith('binary_sensor.')) {
+          if (raw === 'on') return { value: 'LOW', unit: '', cls: 'danger' };
+          if (raw === 'off') return { value: 'NORMAL', unit: '', cls: 'good' };
+        }
+
+        const unit = entity.attributes?.unit_of_measurement || '';
+        const deviceClass = entity.attributes?.device_class || '';
+        const number = Number(raw);
+
+        if (
+          deviceClass === 'timestamp' ||
+          (raw.includes('T') && !Number.isFinite(number))
+        ) {
+          const date = new Date(raw);
+          if (!Number.isNaN(date.getTime())) {
+            return {
+              value: date.toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+              }),
+              unit: '',
+              cls: ''
+            };
+          }
+        }
+
+        if (Number.isFinite(number)) {
+          if (unit === 'USD' || unit === '$') {
+            return {
+              value: `$${number.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}`,
+              unit: '',
+              cls: ''
+            };
+          }
+
+          if (unit === 'min') {
+            const absolute = Math.abs(number);
+            if (absolute >= 1440) {
+              const days = Math.floor(absolute / 1440);
+              const hours = Math.floor((absolute % 1440) / 60);
+              return {
+                value: `${number < 0 ? '-' : ''}${days}d ${hours}h`,
+                unit: '',
+                cls: ''
+              };
+            }
+            if (absolute >= 60) {
+              const hours = Math.floor(absolute / 60);
+              const minutes = Math.round(absolute % 60);
+              return {
+                value: `${number < 0 ? '-' : ''}${hours}h ${minutes}m`,
+                unit: '',
+                cls: ''
+              };
+            }
+          }
+
+          let decimals = 1;
+          if (unit === 'kWh' || unit === 'mi') decimals = 2;
+          if (unit === 'Wh/mi' || unit === 'kW') decimals = 0;
+          if (!unit) decimals = Number.isInteger(number) ? 0 : 1;
+
+          return {
+            value: number.toLocaleString(undefined, {
+              minimumFractionDigits: decimals,
+              maximumFractionDigits: decimals
+            }),
+            unit,
+            cls: number < 0 ? 'danger' : ''
+          };
+        }
+
+        return { value: raw, unit: '', cls: '' };
+      };
+
+      const metrics = ids.map(id => {
+        const data = format(id);
+
+        return `
+          <div class="metric">
+            <div class="metric-icon">
+              <ha-icon icon="${iconFor(id)}"></ha-icon>
+            </div>
+            <div class="metric-copy">
+              <div class="metric-label">${label(id)}</div>
+              <div class="metric-value ${data.cls}">
+                ${data.value}
+                ${data.unit ? `<span class="unit">${data.unit}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <style>
+          .card {
+            --text: #f4f4f4;
+            --secondary: #969ba1;
+            --muted: #666c72;
+            --red: #e82127;
+            --good: #4cd964;
+            --danger: #ff514b;
+            width: 100%;
+            min-width: 0;
+            color: var(--text);
+            font-family: Arial, Helvetica, sans-serif;
+          }
+
+          .header {
+            display: grid;
+            grid-template-columns: 32px minmax(0,1fr) auto;
+            gap: 9px;
+            align-items: center;
+            padding-bottom: 9px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,.06);
+          }
+
+          .header-icon {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9px;
+            background: rgba(232,33,39,.09);
+            border: 1px solid rgba(232,33,39,.15);
+          }
+
+          .header-icon ha-icon {
+            width: 17px;
+            height: 17px;
+            color: var(--red);
+          }
+
+          .title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+            line-height: 1;
+            font-weight: 650;
+          }
+
+          .subtitle {
+            margin-top: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 8px;
+            color: var(--secondary);
+          }
+
+          .count {
+            min-width: 20px;
+            height: 18px;
+            padding: 0 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            border-radius: 8px;
+            background: #1d2023;
+            border: 1px solid #272b2f;
+            font-size: 8px;
+            color: var(--secondary);
+          }
+
+          .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0,1fr));
+            gap: 5px;
+          }
+
+          .metric {
+            min-width: 0;
+            display: grid;
+            grid-template-columns: 28px minmax(0,1fr);
+            gap: 7px;
+            align-items: center;
+            padding: 8px;
+            box-sizing: border-box;
+            border-radius: 10px;
+            background: #1a1d20;
+            border: 1px solid rgba(255,255,255,.06);
+          }
+
+          .metric-icon {
+            width: 27px;
+            height: 27px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: #202428;
+          }
+
+          .metric-icon ha-icon {
+            width: 15px;
+            height: 15px;
+            color: #d5d7da;
+          }
+
+          .metric-copy {
+            min-width: 0;
+          }
+
+          .metric-label {
+            margin-bottom: 3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 7.5px;
+            color: var(--secondary);
+          }
+
+          .metric-value {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+            line-height: 1;
+            font-weight: 650;
+          }
+
+          .unit {
+            margin-left: 2px;
+            font-size: 7px;
+            font-weight: 500;
+            color: var(--secondary);
+          }
+
+          .muted { color: var(--muted); }
+          .good { color: var(--good); }
+          .danger { color: var(--danger); }
+
+          @media (max-width: 700px) {
+            .metrics {
+              grid-template-columns: repeat(2, minmax(0,1fr));
+            }
+          }
+        </style>
+
+        <div class="card">
+          <div class="header">
+            <div class="header-icon">
+              <ha-icon icon="mdi:battery-sync"></ha-icon>
+            </div>
+            <div>
+              <div class="title">Since Last Charge</div>
+              <div class="subtitle">Energy use since charging</div>
+            </div>
+            <div class="count">${ids.length}</div>
+          </div>
+          <div class="metrics">
+            ${metrics}
+          </div>
+        </div>
+      `;
+    ]]]
+
+
+```
+
+</details>
+
+---
 ## Battery
 
 Battery health, degradation, current/original capacity, maximum range, module temperatures, and long-term capacity/range changes.
