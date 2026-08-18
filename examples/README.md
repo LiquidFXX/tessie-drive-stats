@@ -3031,18 +3031,26 @@ show_icon: false
 show_state: false
 show_label: false
 triggers_update:
-  - sensor.car_coaster_consumption_last_charge_at
-  - sensor.car_coaster_distance_since_charge
-  - sensor.car_coaster_battery_used_since_charge
-  - sensor.car_coaster_battery_used_by_driving_since_charge
-  - sensor.car_coaster_battery_used_non_driving_since_charge
-  - sensor.car_coaster_energy_used_since_charge
-  - sensor.car_coaster_energy_used_by_driving_since_charge
-  - sensor.car_coaster_energy_used_non_driving_since_charge
-  - sensor.car_coaster_driving_energy_share_since_charge
-  - sensor.car_coaster_rated_range_used_since_charge
-  - sensor.car_coaster_rated_range_used_by_driving_since_charge
-  - sensor.car_coaster_ideal_range_used_by_driving_since_charge
+  - sensor.car_coaster_last_drive_battery_used
+  - sensor.car_coaster_last_drive_energy
+  - sensor.car_coaster_last_drive_efficiency
+  - sensor.car_coaster_last_drive_miles
+  - sensor.car_coaster_last_drive_time
+  - sensor.car_coaster_last_drive_average_speed
+  - sensor.car_coaster_last_drive_max_speed
+  - sensor.car_coaster_last_drive_ap_fsd_miles
+  - sensor.car_coaster_last_drive_inside_temperature
+  - sensor.car_coaster_last_drive_outside_temperature
+  - sensor.car_coaster_efficiency_this_month
+  - sensor.car_coaster_efficiency_this_year
+  - sensor.car_coaster_average_speed_this_month
+  - sensor.car_coaster_average_outside_temperature_this_month
+  - sensor.car_coaster_inside_temperature_current
+  - sensor.car_coaster_outside_temperature_current
+  - sensor.car_coaster_battery_module_temp_min
+  - sensor.car_coaster_battery_module_temp_max
+  - sensor.car_coaster_battery_module_temp_spread
+  - sensor.car_coaster_battery_level_current
 tap_action:
   action: none
 hold_action:
@@ -3070,180 +3078,125 @@ styles:
 custom_fields:
   main: |
     [[[
-      const ids = ["sensor.car_coaster_consumption_last_charge_at", "sensor.car_coaster_distance_since_charge", "sensor.car_coaster_battery_used_since_charge", "sensor.car_coaster_battery_used_by_driving_since_charge", "sensor.car_coaster_battery_used_non_driving_since_charge", "sensor.car_coaster_energy_used_since_charge", "sensor.car_coaster_energy_used_by_driving_since_charge", "sensor.car_coaster_energy_used_non_driving_since_charge", "sensor.car_coaster_driving_energy_share_since_charge", "sensor.car_coaster_rated_range_used_since_charge", "sensor.car_coaster_rated_range_used_by_driving_since_charge", "sensor.car_coaster_ideal_range_used_by_driving_since_charge"];
+      const e = id => states[id];
 
-      const suffix = id => {
-        if (id.startsWith('binary_sensor.car_coaster_')) {
-          return id.slice('binary_sensor.car_coaster_'.length);
-        }
-        return id.slice('sensor.car_coaster_'.length);
+      const n = id => {
+        const entity = e(id);
+        if (!entity || ['unknown','unavailable',''].includes(entity.state)) return null;
+        const value = Number(entity.state);
+        return Number.isFinite(value) ? value : null;
       };
 
-      const label = id => {
-        let name =
-          states[id]?.attributes?.friendly_name ||
-          suffix(id).replace(/_/g, ' ');
+      const u = id => e(id)?.attributes?.unit_of_measurement || '';
 
-        return name
-          .replace(/^Coaster\s*/i, '')
-          .replace(/^Car Coaster\s*/i, '')
-          .replace(/driVINg/gi, 'driving');
+      const fmt = (id, digits = 1) => {
+        const value = n(id);
+        if (value === null) return '—';
+        return `${value.toLocaleString(undefined, {
+          minimumFractionDigits: digits,
+          maximumFractionDigits: digits
+        })}${u(id) ? `<span class="unit">${u(id)}</span>` : ''}`;
       };
 
-      const iconFor = id => {
-        const name = suffix(id);
+      const minutes = id => {
+        const value = n(id);
+        if (value === null) return '—';
 
-        if (id.startsWith('binary_sensor.')) return 'mdi:car-tire-alert';
-        if (name.includes('ap_fsd')) return 'mdi:steering';
-        if (name.includes('tire')) return 'mdi:car-tire-alert';
-        if (name.includes('battery_health')) return 'mdi:battery-heart-variant';
-        if (name.includes('degradation')) return 'mdi:battery-alert-variant-outline';
-        if (name.includes('battery')) return 'mdi:battery';
-        if (name.includes('supercharger')) return 'mdi:ev-station';
-        if (name.includes('charging')) return 'mdi:ev-plug-tesla';
-        if (name.includes('charge')) return 'mdi:battery-charging';
-        if (name.includes('cost') || name.includes('invoice')) return 'mdi:currency-usd';
-        if (name.includes('energy')) return 'mdi:lightning-bolt';
-        if (name.includes('efficiency')) return 'mdi:gauge';
-        if (name.includes('speed')) return 'mdi:speedometer';
-        if (name.includes('time')) return 'mdi:clock-outline';
-        if (name.includes('drives') || name.includes('sessions')) return 'mdi:counter';
-        if (name.includes('miles') || name.includes('range') || name.includes('distance')) return 'mdi:road-variant';
-        if (name.includes('temperature') || name.includes('_temp_')) return 'mdi:thermometer';
-        if (name.includes('sentry')) return 'mdi:shield-car';
-        if (name.includes('climate')) return 'mdi:fan';
-        if (name.includes('navigation')) return 'mdi:navigation-variant';
-        if (name.includes('location') || name.includes('destination') || name.endsWith('_start')) return 'mdi:map-marker';
-        if (name.includes('software')) return 'mdi:update';
-        if (name.includes('firmware') || name.includes('alert')) return 'mdi:alert-outline';
-        if (name.includes('odometer')) return 'mdi:counter';
-        if (name.includes('connection')) return 'mdi:signal';
-        if (name.includes('wake')) return 'mdi:weather-sunset-up';
-        if (name.includes('vehicle_status')) return 'mdi:car-connected';
-        return 'mdi:information-outline';
+        if (value >= 60) {
+          const h = Math.floor(value / 60);
+          const m = Math.round(value % 60);
+          return `${h}<span class="unit">h</span> ${m}<span class="unit">m</span>`;
+        }
+
+        return `${value.toFixed(1)}<span class="unit">min</span>`;
       };
 
-      const format = id => {
-        const entity = states[id];
-
-        if (!entity) {
-          return { value: '—', unit: '', cls: 'muted' };
-        }
-
-        const raw = String(entity.state ?? '').trim();
-
-        if (!raw || raw === 'unknown' || raw === 'unavailable') {
-          return { value: '—', unit: '', cls: 'muted' };
-        }
-
-        if (id.startsWith('binary_sensor.')) {
-          if (raw === 'on') return { value: 'LOW', unit: '', cls: 'danger' };
-          if (raw === 'off') return { value: 'NORMAL', unit: '', cls: 'good' };
-        }
-
-        const unit = entity.attributes?.unit_of_measurement || '';
-        const deviceClass = entity.attributes?.device_class || '';
-        const number = Number(raw);
-
-        if (
-          deviceClass === 'timestamp' ||
-          (raw.includes('T') && !Number.isFinite(number))
-        ) {
-          const date = new Date(raw);
-          if (!Number.isNaN(date.getTime())) {
-            return {
-              value: date.toLocaleString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit'
-              }),
-              unit: '',
-              cls: ''
-            };
-          }
-        }
-
-        if (Number.isFinite(number)) {
-          if (unit === 'USD' || unit === '$') {
-            return {
-              value: `$${number.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}`,
-              unit: '',
-              cls: ''
-            };
-          }
-
-          if (unit === 'min') {
-            const absolute = Math.abs(number);
-            if (absolute >= 1440) {
-              const days = Math.floor(absolute / 1440);
-              const hours = Math.floor((absolute % 1440) / 60);
-              return {
-                value: `${number < 0 ? '-' : ''}${days}d ${hours}h`,
-                unit: '',
-                cls: ''
-              };
-            }
-            if (absolute >= 60) {
-              const hours = Math.floor(absolute / 60);
-              const minutes = Math.round(absolute % 60);
-              return {
-                value: `${number < 0 ? '-' : ''}${hours}h ${minutes}m`,
-                unit: '',
-                cls: ''
-              };
-            }
-          }
-
-          let decimals = 1;
-          if (unit === 'kWh' || unit === 'mi') decimals = 2;
-          if (unit === 'Wh/mi' || unit === 'kW') decimals = 0;
-          if (!unit) decimals = Number.isInteger(number) ? 0 : 1;
-
-          return {
-            value: number.toLocaleString(undefined, {
-              minimumFractionDigits: decimals,
-              maximumFractionDigits: decimals
-            }),
-            unit,
-            cls: number < 0 ? 'danger' : ''
-          };
-        }
-
-        return { value: raw, unit: '', cls: '' };
+      const percentDiff = (value, baseline) => {
+        if (value === null || baseline === null || baseline === 0) return null;
+        return ((value - baseline) / baseline) * 100;
       };
 
-      const metrics = ids.map(id => {
-        const data = format(id);
+      const lastEff = n('sensor.car_coaster_last_drive_efficiency');
+      const monthEff = n('sensor.car_coaster_efficiency_this_month');
+      const yearEff = n('sensor.car_coaster_efficiency_this_year');
 
-        return `
-          <div class="metric">
-            <div class="metric-icon">
-              <ha-icon icon="${iconFor(id)}"></ha-icon>
-            </div>
-            <div class="metric-copy">
-              <div class="metric-label">${label(id)}</div>
-              <div class="metric-value ${data.cls}">
-                ${data.value}
-                ${data.unit ? `<span class="unit">${data.unit}</span>` : ''}
-              </div>
-            </div>
+      const lastMiles = n('sensor.car_coaster_last_drive_miles');
+      const lastEnergy = n('sensor.car_coaster_last_drive_energy');
+      const batteryUsed = n('sensor.car_coaster_last_drive_battery_used');
+      const apMiles = n('sensor.car_coaster_last_drive_ap_fsd_miles');
+
+      const inside = n('sensor.car_coaster_last_drive_inside_temperature');
+      const outside = n('sensor.car_coaster_last_drive_outside_temperature');
+      const monthOutside = n('sensor.car_coaster_average_outside_temperature_this_month');
+
+      const avgSpeed = n('sensor.car_coaster_last_drive_average_speed');
+      const monthSpeed = n('sensor.car_coaster_average_speed_this_month');
+
+      const packMin = n('sensor.car_coaster_battery_module_temp_min');
+      const packMax = n('sensor.car_coaster_battery_module_temp_max');
+
+      const cabinDelta =
+        inside !== null && outside !== null
+          ? Math.abs(inside - outside)
+          : null;
+
+      const packAvg =
+        packMin !== null && packMax !== null
+          ? (packMin + packMax) / 2
+          : null;
+
+      const whPerMile =
+        lastEnergy !== null && lastMiles !== null && lastMiles > 0
+          ? (lastEnergy * 1000) / lastMiles
+          : null;
+
+      const batteryPerMile =
+        batteryUsed !== null && lastMiles !== null && lastMiles > 0
+          ? batteryUsed / lastMiles
+          : null;
+
+      const apShare =
+        apMiles !== null && lastMiles !== null && lastMiles > 0
+          ? (apMiles / lastMiles) * 100
+          : null;
+
+      const monthEffDelta = percentDiff(lastEff, monthEff);
+      const yearEffDelta = percentDiff(lastEff, yearEff);
+      const speedDelta = percentDiff(avgSpeed, monthSpeed);
+
+      const comparison = delta => {
+        if (delta === null) return { text: '—', cls: 'muted' };
+        if (Math.abs(delta) < 2) return { text: 'Near average', cls: 'muted' };
+        return {
+          text: `${Math.abs(delta).toFixed(1)}% ${delta > 0 ? 'higher' : 'lower'}`,
+          cls: delta > 0 ? 'bad' : 'good'
+        };
+      };
+
+      const monthCompare = comparison(monthEffDelta);
+      const yearCompare = comparison(yearEffDelta);
+
+      const metric = (icon, label, value) => `
+        <div class="metric">
+          <div class="metric-icon">
+            <ha-icon icon="${icon}"></ha-icon>
           </div>
-        `;
-      }).join('');
+          <div class="metric-copy">
+            <div class="metric-label">${label}</div>
+            <div class="metric-value">${value}</div>
+          </div>
+        </div>
+      `;
 
       return `
         <style>
-          .card {
+          .energy {
             --text: #f4f4f4;
             --secondary: #969ba1;
             --muted: #666c72;
             --red: #e82127;
-            --good: #4cd964;
-            --danger: #ff514b;
+            --green: #4cd964;
+            --danger: #ff625d;
             width: 100%;
             min-width: 0;
             color: var(--text);
@@ -3278,9 +3231,6 @@ custom_fields:
           }
 
           .title {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
             font-size: 14px;
             line-height: 1;
             font-weight: 650;
@@ -3288,26 +3238,72 @@ custom_fields:
 
           .subtitle {
             margin-top: 4px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
             font-size: 8px;
             color: var(--secondary);
           }
 
-          .count {
-            min-width: 20px;
-            height: 18px;
-            padding: 0 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
+          .battery {
+            padding: 5px 8px;
             border-radius: 8px;
             background: #1d2023;
             border: 1px solid #272b2f;
+            font-size: 10px;
+            font-weight: 650;
+          }
+
+          .hero {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0,1fr));
+            gap: 6px;
+            margin-bottom: 8px;
+          }
+
+          .hero-item,
+          .factor {
+            min-width: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            border-radius: 12px;
+            background: #1a1d20;
+            border: 1px solid rgba(255,255,255,.06);
+          }
+
+          .hero-label {
+            margin-bottom: 4px;
             font-size: 8px;
             color: var(--secondary);
+          }
+
+          .hero-value {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 18px;
+            line-height: 1;
+            font-weight: 700;
+          }
+
+          .factors {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0,1fr));
+            gap: 6px;
+          }
+
+          .factor-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 7px;
+            padding-bottom: 7px;
+            border-bottom: 1px solid rgba(255,255,255,.06);
+            font-size: 10px;
+            font-weight: 650;
+          }
+
+          .factor-title ha-icon {
+            width: 15px;
+            height: 15px;
+            color: var(--red);
           }
 
           .metrics {
@@ -3319,19 +3315,18 @@ custom_fields:
           .metric {
             min-width: 0;
             display: grid;
-            grid-template-columns: 28px minmax(0,1fr);
-            gap: 7px;
+            grid-template-columns: 27px minmax(0,1fr);
+            gap: 6px;
             align-items: center;
-            padding: 8px;
-            box-sizing: border-box;
+            padding: 7px;
             border-radius: 10px;
-            background: #1a1d20;
-            border: 1px solid rgba(255,255,255,.06);
+            background: #111315;
+            border: 1px solid rgba(255,255,255,.05);
           }
 
           .metric-icon {
-            width: 27px;
-            height: 27px;
+            width: 26px;
+            height: 26px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -3340,8 +3335,8 @@ custom_fields:
           }
 
           .metric-icon ha-icon {
-            width: 15px;
-            height: 15px;
+            width: 14px;
+            height: 14px;
             color: #d5d7da;
           }
 
@@ -3354,7 +3349,7 @@ custom_fields:
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            font-size: 7.5px;
+            font-size: 7px;
             color: var(--secondary);
           }
 
@@ -3362,7 +3357,7 @@ custom_fields:
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            font-size: 13px;
+            font-size: 12px;
             line-height: 1;
             font-weight: 650;
           }
@@ -3374,30 +3369,210 @@ custom_fields:
             color: var(--secondary);
           }
 
-          .muted { color: var(--muted); }
-          .good { color: var(--good); }
-          .danger { color: var(--danger); }
+          .compare {
+            display: grid;
+            grid-template-columns: repeat(2,minmax(0,1fr));
+            gap: 5px;
+            margin-top: 6px;
+          }
 
-          @media (max-width: 700px) {
-            .metrics {
+          .compare-item {
+            padding: 6px 7px;
+            border-radius: 8px;
+            background: #111315;
+            border: 1px solid rgba(255,255,255,.05);
+          }
+
+          .compare-label {
+            margin-bottom: 3px;
+            font-size: 7px;
+            color: var(--secondary);
+          }
+
+          .compare-value {
+            font-size: 9px;
+            font-weight: 650;
+          }
+
+          .good { color: var(--green); }
+          .bad { color: var(--danger); }
+          .muted { color: var(--muted); }
+
+          .footnote {
+            margin-top: 7px;
+            text-align: right;
+            font-size: 7px;
+            color: var(--muted);
+          }
+
+          @media (max-width: 800px) {
+            .hero {
               grid-template-columns: repeat(2, minmax(0,1fr));
+            }
+
+            .factors {
+              grid-template-columns: 1fr;
             }
           }
         </style>
 
-        <div class="card">
+        <div class="energy">
           <div class="header">
             <div class="header-icon">
-              <ha-icon icon="mdi:battery-sync"></ha-icon>
+              <ha-icon icon="mdi:lightning-bolt"></ha-icon>
             </div>
             <div>
-              <div class="title">Since Last Charge</div>
-              <div class="subtitle">Energy use since charging</div>
+              <div class="title">Drive Energy Factors</div>
+              <div class="subtitle">Conditions associated with last-drive battery consumption</div>
             </div>
-            <div class="count">${ids.length}</div>
+            <div class="battery">
+              ${fmt('sensor.car_coaster_battery_level_current', 0)}
+            </div>
           </div>
-          <div class="metrics">
-            ${metrics}
+
+          <div class="hero">
+            <div class="hero-item">
+              <div class="hero-label">Battery Used</div>
+              <div class="hero-value">${fmt('sensor.car_coaster_last_drive_battery_used', 1)}</div>
+            </div>
+            <div class="hero-item">
+              <div class="hero-label">Energy Used</div>
+              <div class="hero-value">${fmt('sensor.car_coaster_last_drive_energy', 2)}</div>
+            </div>
+            <div class="hero-item">
+              <div class="hero-label">Efficiency</div>
+              <div class="hero-value">${fmt('sensor.car_coaster_last_drive_efficiency', 0)}</div>
+            </div>
+            <div class="hero-item">
+              <div class="hero-label">Battery per Mile</div>
+              <div class="hero-value">
+                ${batteryPerMile !== null
+                  ? `${batteryPerMile.toFixed(2)}<span class="unit">%/mi</span>`
+                  : '—'}
+              </div>
+            </div>
+          </div>
+
+          <div class="factors">
+            <div class="factor">
+              <div class="factor-title">
+                <ha-icon icon="mdi:thermometer"></ha-icon>
+                Environment
+              </div>
+
+              <div class="metrics">
+                ${metric(
+                  'mdi:weather-sunny',
+                  'Outside Temp',
+                  fmt('sensor.car_coaster_last_drive_outside_temperature', 1)
+                )}
+                ${metric(
+                  'mdi:car-seat',
+                  'Cabin Temp',
+                  fmt('sensor.car_coaster_last_drive_inside_temperature', 1)
+                )}
+                ${metric(
+                  'mdi:thermometer-lines',
+                  'Cabin ΔT',
+                  cabinDelta !== null
+                    ? `${cabinDelta.toFixed(1)}<span class="unit">${u('sensor.car_coaster_last_drive_outside_temperature')}</span>`
+                    : '—'
+                )}
+                ${metric(
+                  'mdi:calendar-month',
+                  'Month Outside Avg',
+                  fmt('sensor.car_coaster_average_outside_temperature_this_month', 1)
+                )}
+                ${metric(
+                  'mdi:thermometer',
+                  'Current Outside',
+                  fmt('sensor.car_coaster_outside_temperature_current', 1)
+                )}
+                ${metric(
+                  'mdi:home-thermometer',
+                  'Current Cabin',
+                  fmt('sensor.car_coaster_inside_temperature_current', 1)
+                )}
+              </div>
+            </div>
+
+            <div class="factor">
+              <div class="factor-title">
+                <ha-icon icon="mdi:car"></ha-icon>
+                Driving Behavior
+              </div>
+
+              <div class="metrics">
+                ${metric('mdi:road-variant', 'Distance', fmt('sensor.car_coaster_last_drive_miles', 2))}
+                ${metric('mdi:clock-outline', 'Drive Time', minutes('sensor.car_coaster_last_drive_time'))}
+                ${metric('mdi:speedometer-medium', 'Average Speed', fmt('sensor.car_coaster_last_drive_average_speed', 1))}
+                ${metric('mdi:speedometer', 'Max Speed', fmt('sensor.car_coaster_last_drive_max_speed', 0))}
+                ${metric('mdi:steering', 'AP / FSD Miles', fmt('sensor.car_coaster_last_drive_ap_fsd_miles', 2))}
+                ${metric(
+                  'mdi:chart-donut',
+                  'AP / FSD Share',
+                  apShare !== null ? `${apShare.toFixed(1)}<span class="unit">%</span>` : '—'
+                )}
+              </div>
+
+              <div class="compare">
+                <div class="compare-item">
+                  <div class="compare-label">Avg Speed vs Month</div>
+                  <div class="compare-value">
+                    ${speedDelta !== null
+                      ? `${speedDelta > 0 ? '+' : ''}${speedDelta.toFixed(1)}%`
+                      : '—'}
+                  </div>
+                </div>
+
+                <div class="compare-item">
+                  <div class="compare-label">Calculated Wh/mi</div>
+                  <div class="compare-value">
+                    ${whPerMile !== null
+                      ? `${whPerMile.toFixed(0)}<span class="unit">Wh/mi</span>`
+                      : '—'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="factor">
+              <div class="factor-title">
+                <ha-icon icon="mdi:battery-charging"></ha-icon>
+                Battery / Efficiency
+              </div>
+
+              <div class="metrics">
+                ${metric('mdi:gauge', 'Month Efficiency', fmt('sensor.car_coaster_efficiency_this_month', 0))}
+                ${metric('mdi:gauge', 'Year Efficiency', fmt('sensor.car_coaster_efficiency_this_year', 0))}
+                ${metric(
+                  'mdi:battery-thermometer',
+                  'Pack Avg Temp',
+                  packAvg !== null
+                    ? `${packAvg.toFixed(1)}<span class="unit">${u('sensor.car_coaster_battery_module_temp_max')}</span>`
+                    : '—'
+                )}
+                ${metric('mdi:thermometer-lines', 'Pack Spread', fmt('sensor.car_coaster_battery_module_temp_spread', 1))}
+                ${metric('mdi:thermometer-low', 'Pack Minimum', fmt('sensor.car_coaster_battery_module_temp_min', 1))}
+                ${metric('mdi:thermometer-high', 'Pack Maximum', fmt('sensor.car_coaster_battery_module_temp_max', 1))}
+              </div>
+
+              <div class="compare">
+                <div class="compare-item">
+                  <div class="compare-label">Efficiency vs Month</div>
+                  <div class="compare-value ${monthCompare.cls}">${monthCompare.text}</div>
+                </div>
+
+                <div class="compare-item">
+                  <div class="compare-label">Efficiency vs Year</div>
+                  <div class="compare-value ${yearCompare.cls}">${yearCompare.text}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="footnote">
+            These are context indicators, not direct causal battery-loss percentages.
           </div>
         </div>
       `;
