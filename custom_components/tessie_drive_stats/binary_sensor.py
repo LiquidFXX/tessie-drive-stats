@@ -19,6 +19,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_VIN, DOMAIN
 from .coordinator import TessieDriveStatsCoordinator
+from .efficiency import efficiency_intelligence
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -35,15 +36,34 @@ def _tire_low(data: dict[str, Any], position: str) -> bool | None:
     return str(status).lower() == "low"
 
 
+def _unusually_inefficient(data: dict[str, Any]) -> bool | None:
+    """Flag a last drive at least 20% above a recent baseline with enough samples."""
+    result = efficiency_intelligence(data)
+    if result.get("vs_30_day_percent") is None or result.get("recent_30_day_drives", 0) < 5:
+        return None
+    return bool(result.get("unusually_inefficient"))
+
+
 BINARY_SENSORS: tuple[TessieBinarySensorEntityDescription, ...] = tuple(
-    TessieBinarySensorEntityDescription(
-        key=f"tire_pressure_low_{position}",
-        name=f"{position.replace('_', ' ').title()} tire pressure low",
-        icon="mdi:car-tire-alert",
-        device_class=BinarySensorDeviceClass.PROBLEM,
-        value_fn=lambda data, p=position: _tire_low(data, p),
-    )
-    for position in ("front_left", "front_right", "rear_left", "rear_right")
+    [
+        TessieBinarySensorEntityDescription(
+            key=f"tire_pressure_low_{position}",
+            name=f"{position.replace('_', ' ').title()} tire pressure low",
+            icon="mdi:car-tire-alert",
+            device_class=BinarySensorDeviceClass.PROBLEM,
+            value_fn=lambda data, p=position: _tire_low(data, p),
+        )
+        for position in ("front_left", "front_right", "rear_left", "rear_right")
+    ]
+    + [
+        TessieBinarySensorEntityDescription(
+            key="last_drive_unusually_inefficient",
+            name="Last drive unusually inefficient",
+            icon="mdi:gauge-alert",
+            device_class=BinarySensorDeviceClass.PROBLEM,
+            value_fn=_unusually_inefficient,
+        )
+    ]
 )
 
 
