@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import slugify
 
 from .const import CONF_VIN, DOMAIN
 from .coordinator import TessieDriveStatsCoordinator
@@ -98,6 +99,7 @@ class TessieDriveStatsSensor(CoordinatorEntity[TessieDriveStatsCoordinator], Sen
 
         vin = entry.data[CONF_VIN]
         self._attr_unique_id = f"{vin}_{description.key}"
+        self._attr_suggested_object_id = slugify(f"{entry.title}_{description.key}")
         self._attr_device_info = _device_info(entry, device_group)
 
     @property
