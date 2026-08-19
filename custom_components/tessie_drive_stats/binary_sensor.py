@@ -19,6 +19,13 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_VIN, DOMAIN
 from .coordinator import TessieDriveStatsCoordinator
+from .device_groups import (
+    GROUP_MODELS,
+    GROUP_VEHICLE,
+    binary_sensor_device_group,
+    device_identifier,
+    device_name,
+)
 from .efficiency import efficiency_intelligence
 
 
@@ -67,6 +74,20 @@ BINARY_SENSORS: tuple[TessieBinarySensorEntityDescription, ...] = tuple(
 )
 
 
+def _device_info(entry: ConfigEntry, group: str) -> DeviceInfo:
+    """Build device metadata for a binary sensor's analytics group."""
+    vin = entry.data[CONF_VIN]
+    info = DeviceInfo(
+        identifiers={(DOMAIN, device_identifier(vin, group))},
+        manufacturer="Tesla" if group == GROUP_VEHICLE else "Tessie Drive Stats",
+        model=GROUP_MODELS[group],
+        name=device_name(entry.title, group),
+    )
+    if group != GROUP_VEHICLE:
+        info["via_device"] = (DOMAIN, vin)
+    return info
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -97,11 +118,9 @@ class TessieDriveStatsBinarySensor(
         self.entity_description = description
         vin = entry.data[CONF_VIN]
         self._attr_unique_id = f"{vin}_{description.key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, vin)},
-            manufacturer="Tesla",
-            model="Vehicle analytics via Tessie",
-            name=entry.title,
+        self._attr_device_info = _device_info(
+            entry,
+            binary_sensor_device_group(description.key),
         )
 
     @property
