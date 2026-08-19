@@ -13,6 +13,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -75,18 +76,41 @@ BINARY_SENSORS: tuple[TessieBinarySensorEntityDescription, ...] = tuple(
 )
 
 
-def _device_info(entry: ConfigEntry, group: str) -> DeviceInfo:
+def _ensure_parent_device(hass: HomeAssistant, entry: ConfigEntry) -> str:
+    """Ensure the main vehicle device exists and return its registry ID."""
+    vin = entry.data[CONF_VIN]
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, vin)},
+        manufacturer="Tesla",
+        model=GROUP_MODELS[GROUP_VEHICLE],
+        name=entry.title,
+    )
+    return device.id
+
+
+def _device_info(
+    entry: ConfigEntry,
+    group: str,
+    parent_device_id: str,
+) -> DeviceInfo:
     """Build device metadata for a binary sensor's analytics group."""
     vin = entry.data[CONF_VIN]
-    info = DeviceInfo(
+    if group == GROUP_VEHICLE:
+        return DeviceInfo(
+            identifiers={(DOMAIN, vin)},
+            manufacturer="Tesla",
+            model=GROUP_MODELS[group],
+            name=entry.title,
+        )
+
+    return DeviceInfo(
         identifiers={(DOMAIN, device_identifier(vin, group))},
-        manufacturer="Tesla" if group == GROUP_VEHICLE else "Tessie Drive Stats",
+        manufacturer="Tessie Drive Stats",
         model=GROUP_MODELS[group],
         name=device_name(entry.title, group),
+        via_device_id=parent_device_id,
     )
-    if group != GROUP_VEHICLE:
-        info["via_device"] = (DOMAIN, vin)
-    return info
 
 
 async def async_setup_entry(
@@ -95,8 +119,14 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator: TessieDriveStatsCoordinator = entry.runtime_data
+    parent_device_id = _ensure_parent_device(hass, entry)
     async_add_entities(
-        TessieDriveStatsBinarySensor(coordinator, entry, description)
+        TessieDriveStatsBinarySensor(
+            coordinator,
+            entry,
+            description,
+            parent_device_id,
+        )
         for description in BINARY_SENSORS
     )
 
@@ -114,16 +144,23 @@ class TessieDriveStatsBinarySensor(
         coordinator: TessieDriveStatsCoordinator,
         entry: ConfigEntry,
         description: TessieBinarySensorEntityDescription,
+        parent_device_id: str,
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
+        self._vehicle_name = entry.title
         vin = entry.data[CONF_VIN]
         self._attr_unique_id = f"{vin}_{description.key}"
-        self._attr_suggested_object_id = slugify(f"{entry.title}_{description.key}")
         self._attr_device_info = _device_info(
             entry,
             binary_sensor_device_group(description.key),
+            parent_device_id,
         )
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Keep generated entity IDs independent of analytics-device names."""
+        return slugify(f"{self._vehicle_name}_{self.entity_description.key}")
 
     @property
     def is_on(self) -> bool | None:
