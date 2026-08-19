@@ -1,6 +1,6 @@
 # Tessie Drive Stats for Home Assistant
 
-A HACS-ready Home Assistant custom integration for Tesla analytics backed by Tessie. It turns Tessie drive, charging, idle, consumption, battery, tire, navigation, software, lifetime-history, efficiency-intelligence, and optional fleet-invoice data into native Home Assistant entities.
+A HACS-ready Home Assistant custom integration for Tesla analytics backed by Tessie. It turns Tessie drive, charging, idle, consumption, battery, tire, navigation, software, lifetime-history, efficiency-intelligence, charging-economics, and optional fleet-invoice data into native Home Assistant entities.
 
 Tessie Drive Stats is intended to complement the normal Tessie/Home Assistant vehicle integration. It focuses on history, totals, derived analytics, and diagnostic data rather than vehicle controls.
 
@@ -15,16 +15,17 @@ Tessie Drive Stats is intended to complement the normal Tessie/Home Assistant ve
 - Configurable first day of week.
 - Uses Home Assistant's configured timezone for day/week/month/year boundaries.
 - Preserves existing VIN-based unique IDs when upgrading from earlier beta versions.
-- Adds **273 sensor definitions plus 5 problem/warning binary sensors**.
+- Adds **311 sensor definitions plus 5 problem/warning binary sensors**.
 - Includes persistent lifetime driving, charging, Supercharging, idle/vampire-drain, and battery-health history analytics.
 - Adds v0.5 **Efficiency Intelligence** for 30-day, temperature-matched, speed-matched, percentile, and driving-condition comparisons.
+- Adds v0.6 **Charging Economics** for charging efficiency/loss, cost per kWh, cost coverage, estimated driving cost, cost per mile, and recorded-lifetime Supercharger economics.
 - Niche, recorder-heavy, best-effort, and fleet-only entities are disabled by default where appropriate.
 - Diagnostics redact the Tessie access token and intentionally omit addresses, coordinates, and driving-path points.
 - The persistent lifetime cache is privacy-minimized and does not store historical street addresses or GPS coordinates.
 
 ## Analytics included
 
-Tessie Drive Stats includes driving totals, AP/FSD distance, charging and Supercharger costs, idle/vampire-drain analytics, consumption since charge, battery telemetry and health trends, tire pressure, navigation, software information, firmware alerts, observed sleep/activity estimates, lifetime history, efficiency intelligence, and optional fleet Supercharger invoice data.
+Tessie Drive Stats includes driving totals, AP/FSD distance, charging and Supercharger costs, charging efficiency and economics, idle/vampire-drain analytics, consumption since charge, battery telemetry and health trends, tire pressure, navigation, software information, firmware alerts, observed sleep/activity estimates, lifetime history, efficiency intelligence, and optional fleet Supercharger invoice data.
 
 Tessie exposes one drive-history field named `autopilot_distance`. It does not distinguish legacy Autopilot from FSD, so the integration deliberately reports **combined AP/FSD distance** rather than inventing a split Tessie does not provide.
 
@@ -50,6 +51,30 @@ Positive comparison percentages mean the last drive used **more Wh/mi** than the
 These are correlation/context analytics, not causal attribution. The integration does not claim that temperature, speed, cabin conditions, or another single factor caused a specific amount of battery loss.
 
 For implementation details and thresholds, see **[v0.5.0 Efficiency Intelligence](docs/v0.5.0.md)**.
+
+## Charging Economics
+
+Version 0.6.0 adds local charging-cost intelligence using the charge and drive history Tessie Drive Stats already fetches.
+
+Charging Economics includes:
+
+- charging efficiency and charging loss for the last charge and day/week/month/year periods
+- energy-weighted average charging cost per kWh
+- charging-cost coverage so missing Tessie costs are not silently treated as free charging
+- estimated driving cost using actual recorded drive energy
+- estimated cost per driven mile
+- last-charge and last-Supercharger cost per kWh
+- recorded-lifetime charging efficiency, cost coverage, estimated driving cost, and cost per mile
+- recorded-lifetime Supercharger vs. explicitly non-Supercharger cost per kWh and cost premium
+- a common-coverage timestamp for recorded-lifetime driving-cost calculations
+
+Tessie defines charging efficiency as energy added to the battery divided by energy used by the charger. Tessie Drive Stats uses the same definition. Estimated driving cost follows Tessie's documented approach of applying the average charging cost per kWh to energy later spent driving.
+
+Missing charge cost values are excluded from rate calculations rather than assumed to be zero. Use the `charging_cost_coverage_*` sensors to judge how complete those estimates are.
+
+The privacy-minimized lifetime cache does not retain historical locations, so v0.6 deliberately reports **Supercharger vs. non-Supercharger** rather than guessing that every non-Supercharger session occurred at Home.
+
+Charging Economics adds no new Tessie API endpoint. For formulas, data-quality behavior, and privacy details, see **[v0.6.0 Charging Economics](docs/v0.6.0.md)**.
 
 ## Lifetime analytics
 
@@ -95,7 +120,7 @@ Home Assistant preserves entity IDs that were already registered, so renaming a 
 
 ## Example entity IDs and values
 
-The table below is the complete v0.5.0 entity catalog using a fictional vehicle named **My Tesla**.
+The table below is the complete v0.6.0 entity catalog using a fictional vehicle named **My Tesla**.
 
 **All values are illustrative examples only.** Actual states depend on the vehicle, Tessie data availability, Home Assistant unit settings, account type, and the date Tessie began recording the vehicle. An unavailable Tessie field may appear as `unknown` or `unavailable` instead of the example shown.
 
@@ -203,6 +228,49 @@ Entities marked **Disabled** are disabled by default and can be enabled from **S
 | `sensor.my_tesla_worst_speed_band_efficiency` | `262 Wh/mi` | Enabled |
 | `sensor.my_tesla_last_drive_cabin_outside_temperature_delta` | `24.0 °F` | Enabled |
 | `sensor.my_tesla_last_drive_efficiency_context` | `Much higher than typical` | Enabled |
+
+### Charging Economics — v0.6.0
+
+| Entity ID | Example value | Default |
+|---|---:|---|
+| `sensor.my_tesla_last_charge_efficiency` | `90.5 %` | Enabled |
+| `sensor.my_tesla_last_charge_loss` | `9.5 %` | Enabled |
+| `sensor.my_tesla_last_charge_cost_per_kwh` | `$0.1425/kWh` | Enabled |
+| `sensor.my_tesla_last_supercharger_cost_per_kwh` | `$0.3600/kWh` | Enabled |
+| `sensor.my_tesla_charging_efficiency_today` | `90.5 %` | Enabled |
+| `sensor.my_tesla_charging_loss_today` | `9.5 %` | Enabled |
+| `sensor.my_tesla_average_charging_cost_per_kwh_today` | `$0.1425/kWh` | Enabled |
+| `sensor.my_tesla_charging_cost_coverage_today` | `100.0 %` | Enabled |
+| `sensor.my_tesla_estimated_drive_cost_per_mile_today` | `$0.0312/mi` | Enabled |
+| `sensor.my_tesla_estimated_driving_cost_today` | `$0.72` | Enabled |
+| `sensor.my_tesla_charging_efficiency_this_week` | `91.2 %` | Enabled |
+| `sensor.my_tesla_charging_loss_this_week` | `8.8 %` | Enabled |
+| `sensor.my_tesla_average_charging_cost_per_kwh_this_week` | `$0.1870/kWh` | Enabled |
+| `sensor.my_tesla_charging_cost_coverage_this_week` | `94.0 %` | Enabled |
+| `sensor.my_tesla_estimated_drive_cost_per_mile_this_week` | `$0.0401/mi` | Enabled |
+| `sensor.my_tesla_estimated_driving_cost_this_week` | `$5.81` | Enabled |
+| `sensor.my_tesla_charging_efficiency_this_month` | `90.8 %` | Enabled |
+| `sensor.my_tesla_charging_loss_this_month` | `9.2 %` | Enabled |
+| `sensor.my_tesla_average_charging_cost_per_kwh_this_month` | `$0.1680/kWh` | Enabled |
+| `sensor.my_tesla_charging_cost_coverage_this_month` | `97.5 %` | Enabled |
+| `sensor.my_tesla_estimated_drive_cost_per_mile_this_month` | `$0.0363/mi` | Enabled |
+| `sensor.my_tesla_estimated_driving_cost_this_month` | `$22.21` | Enabled |
+| `sensor.my_tesla_charging_efficiency_this_year` | `90.1 %` | Enabled |
+| `sensor.my_tesla_charging_loss_this_year` | `9.9 %` | Enabled |
+| `sensor.my_tesla_average_charging_cost_per_kwh_this_year` | `$0.1730/kWh` | Enabled |
+| `sensor.my_tesla_charging_cost_coverage_this_year` | `98.2 %` | Enabled |
+| `sensor.my_tesla_estimated_drive_cost_per_mile_this_year` | `$0.0375/mi` | Enabled |
+| `sensor.my_tesla_estimated_driving_cost_this_year` | `$155.99` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_charging_efficiency` | `89.7 %` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_charging_loss` | `10.3 %` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_average_charging_cost_per_kwh` | `$0.1615/kWh` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_charging_cost_coverage` | `96.8 %` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_economics_since` | `2024-01-03 21:36:00` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_estimated_driving_cost` | `$698.70` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_estimated_drive_cost_per_mile` | `$0.0379/mi` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_non_supercharger_average_cost_per_kwh` | `$0.1390/kWh` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_supercharger_average_cost_per_kwh` | `$0.3540/kWh` | Enabled |
+| `sensor.my_tesla_recorded_lifetime_supercharger_cost_premium` | `154.7 %` | Enabled |
 
 ### Charging, Supercharging, and idle
 
@@ -416,7 +484,7 @@ Entities marked **Disabled** are disabled by default and can be enabled from **S
 | `binary_sensor.my_tesla_tire_pressure_low_rear_right` | `off` | Pressure not reported low |
 | `binary_sensor.my_tesla_last_drive_unusually_inefficient` | `off` | Last drive is not at least 20% above the weighted 30-day Wh/mi baseline, or there is insufficient data |
 
-That is the complete v0.5.0 catalog: **273 sensor entities plus 5 problem/warning binary sensors**.
+That is the complete v0.6.0 catalog: **311 sensor entities plus 5 problem/warning binary sensors**.
 
 ## Update cadence and API load
 
@@ -430,6 +498,7 @@ The configured refresh interval controls the core drive/charging refresh and cur
 - Lifetime full reconciliation: about every 30 days
 - Last-drive route: fetched when the latest drive changes
 - Efficiency Intelligence: calculated locally from the cached last drive and Tessie-recorded drive history; no additional Tessie endpoint
+- Charging Economics: calculated locally from existing charge/drive history and the lifetime cache; no additional Tessie endpoint
 
 Lifetime drive, charge, idle, and battery-health datasets are fetched independently. A failure in one lifetime endpoint preserves the last good cached data for the other datasets rather than discarding the entire lifetime cache.
 
@@ -441,7 +510,7 @@ The optional last-drive route entity can expose GPS path points as attributes. I
 
 Version 0.4.0 also stores a compact lifetime-history cache using Home Assistant storage. The cache retains only the record IDs/timestamps and numeric/statistical fields required for lifetime calculations. Historical addresses, saved locations, latitude, longitude, and driving-path points are intentionally excluded from the lifetime cache.
 
-Efficiency Intelligence reuses that privacy-minimized drive history and does not add a second historical-location cache.
+Efficiency Intelligence and Charging Economics reuse that privacy-minimized history and do not add another historical-location cache.
 
 ## Install through HACS as a custom repository
 
@@ -459,7 +528,7 @@ You may paste either the raw Tessie token or `Bearer <token>`; the integration n
 
 ## Updating from an earlier beta
 
-Version 0.4.0 preserved the existing VIN-based unique IDs for earlier sensors and added lifetime analytics as additional entities. Version 0.5.0 adds Efficiency Intelligence as new entities without changing those existing unique IDs.
+Version 0.4.0 preserved the existing VIN-based unique IDs for earlier sensors and added lifetime analytics as additional entities. Version 0.5.0 added Efficiency Intelligence. Version 0.6.0 adds Charging Economics as new entities without changing those existing unique IDs.
 
 The first v0.4.0-or-later refresh may take longer than normal if Tessie lifetime history has not yet been backfilled. Once complete, the compact lifetime cache persists across Home Assistant restarts and subsequent lifetime updates are incremental.
 
@@ -493,8 +562,8 @@ If you're signing up for Tessie and would like to support this project, you can 
 
 ## Development validation
 
-The repository includes synthetic calculation, lifetime-cache, and Efficiency Intelligence tests. GitHub Actions compiles the integration and runs the test suite on repository validation runs. No real VIN, trip address, or access token is included in the test fixtures.
+The repository includes synthetic calculation, lifetime-cache, Efficiency Intelligence, and Charging Economics tests. GitHub Actions compiles the integration and runs the test suite on repository validation runs. No real VIN, trip address, or access token is included in the test fixtures.
 
 ## Version
 
-0.5.0
+0.6.0

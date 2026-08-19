@@ -91,6 +91,7 @@ class TessieSensorEntityDescription(SensorEntityDescription):
     attributes_fn: AttributesFn | None = None
     dynamic_currency: bool = False
     invoice_currency: bool = False
+    currency_suffix: str | None = None
 
 
 def _timestamp(value: Any) -> datetime | None:
@@ -216,6 +217,7 @@ def _s(
     entity_category: EntityCategory | None = None,
     dynamic_currency: bool = False,
     invoice_currency: bool = False,
+    currency_suffix: str | None = None,
     attributes_fn: AttributesFn | None = None,
     options: tuple[str, ...] | None = None,
 ) -> TessieSensorEntityDescription:
@@ -231,11 +233,11 @@ def _s(
         entity_category=entity_category,
         dynamic_currency=dynamic_currency,
         invoice_currency=invoice_currency,
+        currency_suffix=currency_suffix,
         value_fn=value_fn,
         attributes_fn=attributes_fn,
         options=list(options) if options else None,
     )
-
 
 
 __all__ = [name for name in globals() if not name.startswith("__")]
