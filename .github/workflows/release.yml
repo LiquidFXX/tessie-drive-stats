@@ -1,0 +1,133 @@
+name: Publish HACS Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - custom_components/tessie_drive_stats/manifest.json
+      - hacs.json
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+concurrency:
+  group: hacs-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Build and publish HACS ZIP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read and validate integration version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(
+              Path('custom_components/tessie_drive_stats/manifest.json').read_text()
+          )
+          print(manifest['version'])
+          PY
+          )"
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([ab]|rc)?[0-9]*$ ]]; then
+            echo "::error::Manifest version '$VERSION' is not a supported release version"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check existing release asset
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+
+            if gh release view "$VERSION" --json assets --jq '.assets[].name' \
+              | grep -Fxq 'tessie-drive-stats.zip'; then
+              echo "asset_exists=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "asset_exists=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "asset_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build HACS release ZIP
+        if: steps.release.outputs.asset_exists != 'true'
+        shell: bash
+        run: |
+          rm -f "$GITHUB_WORKSPACE/tessie-drive-stats.zip"
+          cd "$GITHUB_WORKSPACE/custom_components/tessie_drive_stats"
+          zip -r "$GITHUB_WORKSPACE/tessie-drive-stats.zip" . \
+            -x '__pycache__/*' '*.pyc' '.DS_Store'
+
+      - name: Validate ZIP structure
+        if: steps.release.outputs.asset_exists != 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import zipfile
+
+          archive = 'tessie-drive-stats.zip'
+          with zipfile.ZipFile(archive) as zf:
+              names = set(zf.namelist())
+              required = {'manifest.json', '__init__.py'}
+              missing = sorted(required - names)
+              if missing:
+                  raise SystemExit(f'Missing required files in release ZIP: {missing}')
+
+              manifest = json.loads(zf.read('manifest.json'))
+              if manifest.get('version') != os.environ['VERSION']:
+                  raise SystemExit(
+                      f"ZIP manifest version {manifest.get('version')} does not match "
+                      f"release version {os.environ['VERSION']}"
+                  )
+
+          print(f'Validated {archive} for version {os.environ["VERSION"]}')
+          PY
+
+      - name: Create release and upload ZIP
+        if: steps.release.outputs.exists != 'true'
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Tessie Drive Stats ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: ${{ github.workspace }}/tessie-drive-stats.zip
+
+      - name: Add ZIP to existing release
+        if: steps.release.outputs.exists == 'true' && steps.release.outputs.asset_exists != 'true'
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          fail_on_unmatched_files: true
+          files: ${{ github.workspace }}/tessie-drive-stats.zip
+
+      - name: Release already packaged
+        if: steps.release.outputs.asset_exists == 'true'
+        run: echo "Release ${{ steps.version.outputs.version }} already contains tessie-drive-stats.zip; leaving it untouched so its download count is preserved."

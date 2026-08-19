@@ -1,3 +1,6 @@
 {
-  "name": "Tessie Drive Stats"
+  "name": "Tessie Drive Stats",
+  "zip_release": true,
+  "hide_default_branch": true,
+  "filename": "tessie-drive-stats.zip"
 }
