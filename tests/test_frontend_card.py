@@ -21,8 +21,17 @@ def test_manifest_and_frontend_versions_match():
     assert "frontend" in manifest["dependencies"]
 
 
+def test_frontend_registration_uses_config_entry_only_schema():
+    """Integration-level setup must run for config-entry-only installs."""
+    text = INIT.read_text()
+    assert "CONFIG_SCHEMA: Final = cv.config_entry_only_config_schema(DOMAIN)" in text
+    assert "async def async_setup(" in text
+    setup = text.split("async def async_setup(", 1)[1]
+    assert "await _async_register_frontend(hass)" in setup
+
+
 def test_frontend_registration_has_config_entry_fallback():
-    """The bundled card must be registered on the normal config-entry path."""
+    """The bundled card must also register on the config-entry path."""
     text = INIT.read_text()
     assert "async def _async_register_frontend" in text
     assert "add_extra_js_url" in text
