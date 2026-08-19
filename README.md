@@ -1,6 +1,6 @@
 # Tessie Drive Stats for Home Assistant
 
-A HACS-ready Home Assistant custom integration for Tesla analytics backed by Tessie. It turns Tessie drive, charging, idle, consumption, battery, tire, navigation, software, lifetime-history, and optional fleet-invoice data into native Home Assistant entities.
+A HACS-ready Home Assistant custom integration for Tesla analytics backed by Tessie. It turns Tessie drive, charging, idle, consumption, battery, tire, navigation, software, lifetime-history, efficiency-intelligence, and optional fleet-invoice data into native Home Assistant entities.
 
 Tessie Drive Stats is intended to complement the normal Tessie/Home Assistant vehicle integration. It focuses on history, totals, derived analytics, and diagnostic data rather than vehicle controls.
 
@@ -15,21 +15,45 @@ Tessie Drive Stats is intended to complement the normal Tessie/Home Assistant ve
 - Configurable first day of week.
 - Uses Home Assistant's configured timezone for day/week/month/year boundaries.
 - Preserves existing VIN-based unique IDs when upgrading from earlier beta versions.
-- Adds **247 sensor definitions plus 4 tire-pressure warning binary sensors**.
+- Adds **273 sensor definitions plus 5 problem/warning binary sensors**.
 - Includes persistent lifetime driving, charging, Supercharging, idle/vampire-drain, and battery-health history analytics.
+- Adds v0.5 **Efficiency Intelligence** for 30-day, temperature-matched, speed-matched, percentile, and driving-condition comparisons.
 - Niche, recorder-heavy, best-effort, and fleet-only entities are disabled by default where appropriate.
 - Diagnostics redact the Tessie access token and intentionally omit addresses, coordinates, and driving-path points.
 - The persistent lifetime cache is privacy-minimized and does not store historical street addresses or GPS coordinates.
 
 ## Analytics included
 
-Tessie Drive Stats includes driving totals, AP/FSD distance, charging and Supercharger costs, idle/vampire-drain analytics, consumption since charge, battery telemetry and health trends, tire pressure, navigation, software information, firmware alerts, observed sleep/activity estimates, lifetime history, and optional fleet Supercharger invoice data.
+Tessie Drive Stats includes driving totals, AP/FSD distance, charging and Supercharger costs, idle/vampire-drain analytics, consumption since charge, battery telemetry and health trends, tire pressure, navigation, software information, firmware alerts, observed sleep/activity estimates, lifetime history, efficiency intelligence, and optional fleet Supercharger invoice data.
 
 Tessie exposes one drive-history field named `autopilot_distance`. It does not distinguish legacy Autopilot from FSD, so the integration deliberately reports **combined AP/FSD distance** rather than inventing a split Tessie does not provide.
 
+## Efficiency Intelligence
+
+Version 0.5.0 adds historical context around the most recent completed drive using Tessie history already cached by the integration. No extra Tessie endpoint is required.
+
+Efficiency Intelligence includes:
+
+- a rolling 30-day weighted Wh/mi baseline
+- last-drive efficiency difference vs. the 30-day baseline
+- similar-temperature comparisons using ±7.5°F
+- similar-average-speed comparisons using ±7.5 mph
+- last-drive efficiency percentile across recorded Tessie drive history
+- temperature-band and speed-band efficiency
+- best/worst temperature and speed bands
+- cabin-to-outside temperature delta
+- a human-readable efficiency context state
+- an `last_drive_unusually_inefficient` problem binary sensor
+
+Positive comparison percentages mean the last drive used **more Wh/mi** than the baseline; negative values mean it used less. The unusually-inefficient binary sensor requires at least five 30-day comparison drives and turns on at **20% or more above** the weighted 30-day baseline.
+
+These are correlation/context analytics, not causal attribution. The integration does not claim that temperature, speed, cabin conditions, or another single factor caused a specific amount of battery loss.
+
+For implementation details and thresholds, see **[v0.5.0 Efficiency Intelligence](docs/v0.5.0.md)**.
+
 ## Lifetime analytics
 
-Version 0.4.0 distinguishes two types of lifetime data:
+Version 0.4.0 introduced two types of lifetime data:
 
 - **Vehicle lifetime** — counters Tessie reports directly from the vehicle, such as odometer and `lifetime_energy_used`.
 - **Tessie recorded lifetime** — totals calculated from all drive, charge, idle, and battery-health history available in Tessie.
@@ -44,7 +68,7 @@ Want to see what Tessie Drive Stats can look like in Home Assistant?
 
 **[View the Tesla-inspired dashboard and card examples →](examples/README.md)**
 
-The examples gallery includes vehicle status, charging, driving-period summaries, Last Drive, battery health, idle/vampire drain, charging costs, Supercharging, tire pressure, navigation, software/alerts, lifetime analytics, and the new **Drive Energy Factors** card. Drive Energy Factors places actual last-drive battery use and efficiency beside outside/cabin temperature, speed, AP/FSD use, battery-pack temperature, and month/year efficiency comparisons so consumption can be viewed in context without implying a single factor caused a specific amount of battery loss.
+The examples gallery includes vehicle status, charging, driving-period summaries, Last Drive, battery health, idle/vampire drain, charging costs, Supercharging, tire pressure, navigation, software/alerts, lifetime analytics, and the **Drive Energy Factors** card. Drive Energy Factors places actual last-drive battery use and efficiency beside outside/cabin temperature, speed, AP/FSD use, battery-pack temperature, and month/year efficiency comparisons so consumption can be viewed in context without implying a single factor caused a specific amount of battery loss.
 
 Version 0.4.0 also includes a reusable **[Tesla-style Lifetime card YAML](examples/lifetime-card.yaml)** with a configurable vehicle entity prefix.
 
@@ -71,7 +95,7 @@ Home Assistant preserves entity IDs that were already registered, so renaming a 
 
 ## Example entity IDs and values
 
-The table below is the complete v0.4.0 entity catalog using a fictional vehicle named **My Tesla**.
+The table below is the complete v0.5.0 entity catalog using a fictional vehicle named **My Tesla**.
 
 **All values are illustrative examples only.** Actual states depend on the vehicle, Tessie data availability, Home Assistant unit settings, account type, and the date Tessie began recording the vehicle. An unavailable Tessie field may appear as `unknown` or `unavailable` instead of the example shown.
 
@@ -148,6 +172,37 @@ Entities marked **Disabled** are disabled by default and can be enabled from **S
 | `sensor.my_tesla_last_drive_tag` | `Commute` | Enabled |
 | `sensor.my_tesla_last_drive_path_points` | `186` | Disabled |
 | `sensor.my_tesla_last_drive_path_autopilot_share` | `71.4 %` | Disabled |
+
+### Efficiency Intelligence — v0.5.0
+
+| Entity ID | Example value | Default |
+|---|---:|---|
+| `sensor.my_tesla_last_drive_efficiency_30_day_average` | `238 Wh/mi` | Enabled |
+| `sensor.my_tesla_last_drive_efficiency_vs_30_day` | `+16.0 %` | Enabled |
+| `sensor.my_tesla_last_drive_efficiency_30_day_drives` | `64` | Enabled |
+| `sensor.my_tesla_last_drive_similar_temperature_efficiency` | `251 Wh/mi` | Enabled |
+| `sensor.my_tesla_last_drive_efficiency_vs_similar_temperature` | `+10.0 %` | Enabled |
+| `sensor.my_tesla_last_drive_similar_temperature_drives` | `21` | Enabled |
+| `sensor.my_tesla_last_drive_similar_speed_efficiency` | `244 Wh/mi` | Enabled |
+| `sensor.my_tesla_last_drive_efficiency_vs_similar_speed` | `+13.1 %` | Enabled |
+| `sensor.my_tesla_last_drive_similar_speed_drives` | `37` | Enabled |
+| `sensor.my_tesla_last_drive_efficiency_percentile` | `82.0 %` | Enabled |
+| `sensor.my_tesla_last_drive_temperature_band` | `90°F and above` | Enabled |
+| `sensor.my_tesla_last_drive_temperature_band_efficiency` | `254 Wh/mi` | Enabled |
+| `sensor.my_tesla_last_drive_temperature_band_drives` | `93` | Enabled |
+| `sensor.my_tesla_best_temperature_band` | `60–75°F` | Enabled |
+| `sensor.my_tesla_best_temperature_band_efficiency` | `218 Wh/mi` | Enabled |
+| `sensor.my_tesla_worst_temperature_band` | `Below 40°F` | Enabled |
+| `sensor.my_tesla_worst_temperature_band_efficiency` | `287 Wh/mi` | Enabled |
+| `sensor.my_tesla_last_drive_speed_band` | `Mixed (25–45 mph)` | Enabled |
+| `sensor.my_tesla_last_drive_speed_band_efficiency` | `236 Wh/mi` | Enabled |
+| `sensor.my_tesla_last_drive_speed_band_drives` | `520` | Enabled |
+| `sensor.my_tesla_best_speed_band` | `Low speed (<25 mph)` | Enabled |
+| `sensor.my_tesla_best_speed_band_efficiency` | `221 Wh/mi` | Enabled |
+| `sensor.my_tesla_worst_speed_band` | `Highway (45+ mph)` | Enabled |
+| `sensor.my_tesla_worst_speed_band_efficiency` | `262 Wh/mi` | Enabled |
+| `sensor.my_tesla_last_drive_cabin_outside_temperature_delta` | `24.0 °F` | Enabled |
+| `sensor.my_tesla_last_drive_efficiency_context` | `Much higher than typical` | Enabled |
 
 ### Charging, Supercharging, and idle
 
@@ -351,7 +406,7 @@ Entities marked **Disabled** are disabled by default and can be enabled from **S
 | `sensor.my_tesla_last_supercharger_invoice_cost` | `$18.24` | Disabled |
 | `sensor.my_tesla_last_supercharger_invoice_cost_per_kwh` | `$0.360/kWh` | Disabled |
 
-### Tire-pressure warning binary sensors
+### Problem / warning binary sensors
 
 | Entity ID | Example value | Meaning |
 |---|---:|---|
@@ -359,8 +414,9 @@ Entities marked **Disabled** are disabled by default and can be enabled from **S
 | `binary_sensor.my_tesla_tire_pressure_low_front_right` | `off` | Pressure not reported low |
 | `binary_sensor.my_tesla_tire_pressure_low_rear_left` | `off` | Pressure not reported low |
 | `binary_sensor.my_tesla_tire_pressure_low_rear_right` | `off` | Pressure not reported low |
+| `binary_sensor.my_tesla_last_drive_unusually_inefficient` | `off` | Last drive is not at least 20% above the weighted 30-day Wh/mi baseline, or there is insufficient data |
 
-That is the complete v0.4.0 catalog: **247 sensor entities plus 4 tire-pressure warning binary sensors**.
+That is the complete v0.5.0 catalog: **273 sensor entities plus 5 problem/warning binary sensors**.
 
 ## Update cadence and API load
 
@@ -373,16 +429,19 @@ The configured refresh interval controls the core drive/charging refresh and cur
 - Lifetime history: one full backfill on first v0.4.0 refresh, then incremental refreshes about every 6 hours with a 2-day overlap
 - Lifetime full reconciliation: about every 30 days
 - Last-drive route: fetched when the latest drive changes
+- Efficiency Intelligence: calculated locally from the cached last drive and Tessie-recorded drive history; no additional Tessie endpoint
 
 Lifetime drive, charge, idle, and battery-health datasets are fetched independently. A failure in one lifetime endpoint preserves the last good cached data for the other datasets rather than discarding the entire lifetime cache.
 
 An optional endpoint failure is isolated from the core drive/charging coordinator when possible, so a temporary battery-health, history, path, firmware, lifetime-history, or fleet-only endpoint problem should not make the main drive sensors unavailable. Authentication failures still trigger Home Assistant's reauthentication flow.
 
-## recorder and storage considerations
+## Recorder and storage considerations
 
 The optional last-drive route entity can expose GPS path points as attributes. It is disabled by default and limits the stored route to at most 200 points to reduce Home Assistant recorder/database growth.
 
 Version 0.4.0 also stores a compact lifetime-history cache using Home Assistant storage. The cache retains only the record IDs/timestamps and numeric/statistical fields required for lifetime calculations. Historical addresses, saved locations, latitude, longitude, and driving-path points are intentionally excluded from the lifetime cache.
+
+Efficiency Intelligence reuses that privacy-minimized drive history and does not add a second historical-location cache.
 
 ## Install through HACS as a custom repository
 
@@ -400,9 +459,9 @@ You may paste either the raw Tessie token or `Bearer <token>`; the integration n
 
 ## Updating from an earlier beta
 
-Version 0.4.0 preserves the existing VIN-based unique IDs for earlier sensors and adds lifetime analytics as additional entities. After updating through HACS, restart Home Assistant so the new entities are registered.
+Version 0.4.0 preserved the existing VIN-based unique IDs for earlier sensors and added lifetime analytics as additional entities. Version 0.5.0 adds Efficiency Intelligence as new entities without changing those existing unique IDs.
 
-The first v0.4.0 refresh may take longer than normal while Tessie history is backfilled. Once complete, the compact lifetime cache persists across Home Assistant restarts and subsequent lifetime updates are incremental.
+The first v0.4.0-or-later refresh may take longer than normal if Tessie lifetime history has not yet been backfilled. Once complete, the compact lifetime cache persists across Home Assistant restarts and subsequent lifetime updates are incremental.
 
 Some diagnostic, route, observed-activity, tire-status, fleet-invoice, and lifetime-sync entities are disabled by default. Enable any of them from the vehicle's entity list if you want to use them.
 
@@ -416,7 +475,7 @@ The normal Tessie vehicle integration can remain installed. Tessie Drive Stats u
 
 The integration stores the Tessie access token in the Home Assistant config entry as required for API access. Diagnostics redact the token and avoid returning street addresses, GPS coordinates, or route points.
 
-The v0.4.0 lifetime cache is privacy-minimized: it stores only fields required to calculate lifetime statistics and intentionally excludes historical addresses, saved-location names, GPS coordinates, and route paths.
+The lifetime cache is privacy-minimized: it stores only fields required to calculate lifetime statistics and intentionally excludes historical addresses, saved-location names, GPS coordinates, and route paths.
 
 Normal Home Assistant entity states may still contain user-requested data such as last-drive locations or navigation destinations. Treat downloaded diagnostics and screenshots according to your own privacy requirements.
 
@@ -434,8 +493,8 @@ If you're signing up for Tessie and would like to support this project, you can 
 
 ## Development validation
 
-The repository includes synthetic calculation and lifetime-cache tests. GitHub Actions compiles the integration and runs the test suite on repository validation runs. No real VIN, trip address, or access token is included in the test fixtures.
+The repository includes synthetic calculation, lifetime-cache, and Efficiency Intelligence tests. GitHub Actions compiles the integration and runs the test suite on repository validation runs. No real VIN, trip address, or access token is included in the test fixtures.
 
 ## Version
 
-0.4.0
+0.5.0
