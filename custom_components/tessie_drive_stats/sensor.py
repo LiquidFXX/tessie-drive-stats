@@ -15,6 +15,7 @@ from .const import CONF_VIN, DOMAIN
 from .coordinator import TessieDriveStatsCoordinator
 from .sensor_battery import SENSORS as BATTERY_SENSORS
 from .sensor_charge_idle import SENSORS as CHARGE_IDLE_SENSORS
+from .sensor_charging_economics import SENSORS as CHARGING_ECONOMICS_SENSORS
 from .sensor_common import TessieSensorEntityDescription, _invoice_currency
 from .sensor_drive import SENSORS as DRIVE_SENSORS
 from .sensor_efficiency import SENSORS as EFFICIENCY_SENSORS
@@ -25,6 +26,7 @@ SENSORS_TUPLE = tuple(
     DRIVE_SENSORS
     + EFFICIENCY_SENSORS
     + CHARGE_IDLE_SENSORS
+    + CHARGING_ECONOMICS_SENSORS
     + BATTERY_SENSORS
     + LIFETIME_SENSORS
     + VEHICLE_SENSORS
@@ -75,6 +77,8 @@ class TessieDriveStatsSensor(CoordinatorEntity[TessieDriveStatsCoordinator], Sen
 
     @property
     def native_unit_of_measurement(self) -> str | None:
+        if self.entity_description.currency_suffix:
+            return f"{self._currency}{self.entity_description.currency_suffix}"
         if self.entity_description.dynamic_currency:
             return self._currency
         if self.entity_description.invoice_currency:
