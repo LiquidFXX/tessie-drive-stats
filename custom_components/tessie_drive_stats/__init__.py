@@ -3,18 +3,44 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 
 from .api import TessieApiClient, TessieApiError
-from .const import CONF_ACCESS_TOKEN, CONF_VEHICLE_NAME, CONF_VIN
+from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_VEHICLE_NAME,
+    CONF_VIN,
+    FRONTEND_URL,
+    FRONTEND_VERSION,
+)
 from .coordinator import TessieDriveStatsCoordinator
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 _LOGGER = logging.getLogger(__name__)
+_FRONTEND_DIR = Path(__file__).parent / "www"
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the bundled Tessie Drive Stats dashboard card."""
+    await hass.http.async_register_static_paths(
+        [
+            StaticPathConfig(
+                f"/{__package__.split('.')[-1]}",
+                str(_FRONTEND_DIR),
+                False,
+            )
+        ]
+    )
+    add_extra_js_url(hass, f"{FRONTEND_URL}?v={FRONTEND_VERSION}")
+    return True
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
