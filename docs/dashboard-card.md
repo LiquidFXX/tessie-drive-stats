@@ -1,8 +1,8 @@
 # Bundled Lovelace card
 
-Tessie Drive Stats 0.6.3b2 includes a **pre-release bundled Lovelace card**. The card ships inside the integration; a second HACS frontend repository is not required.
+Tessie Drive Stats 0.6.3b3 includes a **pre-release bundled Lovelace card**. The card ships inside the integration; a second HACS frontend repository is not required.
 
-0.6.3b2 fixes frontend publication for config-entry-only installations by registering the bundled JavaScript during config entry setup as well as integration-level setup. This is the normal HACS installation path and makes the card registration more robust across Home Assistant startup ordering.
+0.6.3b3 declares Tessie Drive Stats as a Home Assistant config-entry-only integration so integration-level setup runs through the same startup path used by active integrations that publish bundled custom cards. The card is still also registered during config entry setup as an idempotent fallback. This moves frontend publication earlier and reduces the chance that Home Assistant's dashboard editor is created before the card module has registered itself.
 
 After installing or updating the integration and restarting Home Assistant, add **Tessie Drive Stats** from the dashboard card picker or use YAML:
 
@@ -95,6 +95,10 @@ The visual editor exposes a Home Assistant config-entry selector filtered to Tes
 
 If no vehicle is selected and exactly one `*_vehicle_status` entity is available, the card falls back to automatic single-vehicle discovery.
 
+## Pre-release installation
+
+HACS normally excludes pre-releases from update checks unless pre-release tracking is enabled. For testing, open the Tessie Drive Stats repository in HACS, use **Redownload**, and choose `0.6.3b3` under **Need a different version?** if it is not offered automatically. Restart Home Assistant after the download and refresh the frontend before testing the card picker.
+
 ## Pre-release notes
 
-0.6.3b2 is intended for card layout, frontend-loading, and compatibility testing before the bundled card is promoted to a stable release. Existing sensor and binary-sensor calculations are unchanged by this frontend addition.
+0.6.3b3 is intended for card layout, frontend-loading, and compatibility testing before the bundled card is promoted to a stable release. Existing sensor and binary-sensor calculations are unchanged by this frontend addition.
