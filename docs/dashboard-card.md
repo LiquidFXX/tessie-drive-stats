@@ -1,6 +1,8 @@
 # Bundled Lovelace card
 
-Tessie Drive Stats 0.6.3b1 introduces a **pre-release bundled Lovelace card**. The card ships inside the integration; a second HACS frontend repository is not required.
+Tessie Drive Stats 0.6.3b2 includes a **pre-release bundled Lovelace card**. The card ships inside the integration; a second HACS frontend repository is not required.
+
+0.6.3b2 fixes frontend publication for config-entry-only installations by registering the bundled JavaScript during config entry setup as well as integration-level setup. This is the normal HACS installation path and makes the card registration more robust across Home Assistant startup ordering.
 
 After installing or updating the integration and restarting Home Assistant, add **Tessie Drive Stats** from the dashboard card picker or use YAML:
 
@@ -95,4 +97,4 @@ If no vehicle is selected and exactly one `*_vehicle_status` entity is available
 
 ## Pre-release notes
 
-0.6.3b1 is intended for card layout and compatibility testing before the bundled card is promoted to a stable release. Existing sensor and binary-sensor calculations are unchanged by this frontend addition.
+0.6.3b2 is intended for card layout, frontend-loading, and compatibility testing before the bundled card is promoted to a stable release. Existing sensor and binary-sensor calculations are unchanged by this frontend addition.

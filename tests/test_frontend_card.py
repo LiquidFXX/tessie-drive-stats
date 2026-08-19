@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 INTEGRATION = ROOT / "custom_components" / "tessie_drive_stats"
 CARD = INTEGRATION / "www" / "tessie-drive-stats-card.js"
+INIT = INTEGRATION / "__init__.py"
 
 
 def test_manifest_and_frontend_versions_match():
@@ -18,6 +19,17 @@ def test_manifest_and_frontend_versions_match():
     assert match
     assert manifest["version"] == match.group(1)
     assert "frontend" in manifest["dependencies"]
+
+
+def test_frontend_registration_has_config_entry_fallback():
+    """The bundled card must be registered on the normal config-entry path."""
+    text = INIT.read_text()
+    assert "async def _async_register_frontend" in text
+    assert "add_extra_js_url" in text
+    assert "async_register_static_paths" in text
+
+    setup_entry = text.split("async def async_setup_entry", 1)[1]
+    assert "await _async_register_frontend(hass)" in setup_entry
 
 
 def test_bundled_card_registers_all_views():

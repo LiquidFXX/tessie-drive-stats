@@ -26,10 +26,14 @@ from .coordinator import TessieDriveStatsCoordinator
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 _LOGGER = logging.getLogger(__name__)
 _FRONTEND_DIR = Path(__file__).parent / "www"
+_FRONTEND_REGISTERED = "tessie_drive_stats_frontend_registered"
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the bundled Tessie Drive Stats dashboard card."""
+async def _async_register_frontend(hass: HomeAssistant) -> None:
+    """Publish and register the bundled dashboard card exactly once."""
+    if hass.data.get(_FRONTEND_REGISTERED):
+        return
+
     await hass.http.async_register_static_paths(
         [
             StaticPathConfig(
@@ -40,6 +44,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         ]
     )
     add_extra_js_url(hass, f"{FRONTEND_URL}?v={FRONTEND_VERSION}")
+    hass.data[_FRONTEND_REGISTERED] = True
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up integration-level resources."""
+    await _async_register_frontend(hass)
     return True
 
 
@@ -72,6 +82,12 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tessie Drive Stats from a config entry."""
+    # Config-entry-only installations are the normal HACS path. Register the
+    # bundled frontend here as well as in async_setup so the card is published
+    # even if Home Assistant reaches entry setup without running integration-
+    # level setup first. The helper is idempotent for multi-vehicle installs.
+    await _async_register_frontend(hass)
+
     api = TessieApiClient(
         async_get_clientsession(hass),
         entry.data[CONF_ACCESS_TOKEN],
