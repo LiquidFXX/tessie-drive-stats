@@ -48,7 +48,14 @@ jobs:
             exit 1
           fi
 
+          if [[ "$VERSION" =~ (a|b|rc)[0-9]*$ ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
 
       - name: Check existing release asset
         id: release
@@ -94,7 +101,11 @@ jobs:
           archive = 'tessie-drive-stats.zip'
           with zipfile.ZipFile(archive) as zf:
               names = set(zf.namelist())
-              required = {'manifest.json', '__init__.py'}
+              required = {
+                  'manifest.json',
+                  '__init__.py',
+                  'www/tessie-drive-stats-card.js',
+              }
               missing = sorted(required - names)
               if missing:
                   raise SystemExit(f'Missing required files in release ZIP: {missing}')
@@ -116,6 +127,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.version }}
           target_commitish: ${{ github.sha }}
           name: Tessie Drive Stats ${{ steps.version.outputs.version }}
+          prerelease: ${{ steps.version.outputs.prerelease }}
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: ${{ github.workspace }}/tessie-drive-stats.zip
@@ -125,6 +137,7 @@ jobs:
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           tag_name: ${{ steps.version.outputs.version }}
+          prerelease: ${{ steps.version.outputs.prerelease }}
           fail_on_unmatched_files: true
           files: ${{ github.workspace }}/tessie-drive-stats.zip
 
