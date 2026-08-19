@@ -1,15 +1,29 @@
-from custom_components.tessie_drive_stats.efficiency import (
-    SPEED_BANDS,
-    TEMPERATURE_BANDS,
-    aggregate_efficiency,
-    best_worst_band,
-    efficiency_context,
-    efficiency_intelligence,
-    efficiency_percentile,
-    percent_difference,
-    speed_band,
-    temperature_band,
+"""Tests for Tessie Drive Stats efficiency-intelligence helpers."""
+
+import importlib.util
+from pathlib import Path
+
+MODULE_PATH = (
+    Path(__file__).parents[1]
+    / "custom_components"
+    / "tessie_drive_stats"
+    / "efficiency.py"
 )
+spec = importlib.util.spec_from_file_location("tessie_efficiency", MODULE_PATH)
+eff = importlib.util.module_from_spec(spec)
+assert spec and spec.loader
+spec.loader.exec_module(eff)
+
+SPEED_BANDS = eff.SPEED_BANDS
+TEMPERATURE_BANDS = eff.TEMPERATURE_BANDS
+aggregate_efficiency = eff.aggregate_efficiency
+best_worst_band = eff.best_worst_band
+efficiency_context = eff.efficiency_context
+efficiency_intelligence = eff.efficiency_intelligence
+efficiency_percentile = eff.efficiency_percentile
+percent_difference = eff.percent_difference
+speed_band = eff.speed_band
+temperature_band = eff.temperature_band
 
 
 def drive(i, *, days_ago=10, miles=10, kwh=2.5, temp=70, speed=35):
