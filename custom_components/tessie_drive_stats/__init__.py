@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Final
 
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
@@ -18,11 +20,13 @@ from .const import (
     CONF_ACCESS_TOKEN,
     CONF_VEHICLE_NAME,
     CONF_VIN,
+    DOMAIN,
     FRONTEND_URL,
     FRONTEND_VERSION,
 )
 from .coordinator import TessieDriveStatsCoordinator
 
+CONFIG_SCHEMA: Final = cv.config_entry_only_config_schema(DOMAIN)
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 _LOGGER = logging.getLogger(__name__)
 _FRONTEND_DIR = Path(__file__).parent / "www"
@@ -37,7 +41,7 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
     await hass.http.async_register_static_paths(
         [
             StaticPathConfig(
-                f"/{__package__.split('.')[-1]}",
+                f"/{DOMAIN}",
                 str(_FRONTEND_DIR),
                 False,
             )
@@ -82,10 +86,8 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Tessie Drive Stats from a config entry."""
-    # Config-entry-only installations are the normal HACS path. Register the
-    # bundled frontend here as well as in async_setup so the card is published
-    # even if Home Assistant reaches entry setup without running integration-
-    # level setup first. The helper is idempotent for multi-vehicle installs.
+    # Keep this fallback in addition to integration-level async_setup. It is
+    # idempotent and protects installations where startup ordering differs.
     await _async_register_frontend(hass)
 
     api = TessieApiClient(
