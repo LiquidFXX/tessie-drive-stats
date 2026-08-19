@@ -28,3 +28,6 @@ WEEKDAYS: Final = (
 
 TESSIE_BASE_URL: Final = "https://api.tessie.com"
 REQUEST_TIMEOUT: Final = 30
+
+FRONTEND_VERSION: Final = "0.6.3b1"
+FRONTEND_URL: Final = f"/{DOMAIN}/tessie-drive-stats-card.js"

@@ -1,0 +1,41 @@
+# Tessie Drive Stats bundled card gallery
+#
+# With one configured vehicle, the card auto-discovers the vehicle.
+# With multiple vehicles, use the card editor's Vehicle selector or add
+# config_entry: <your Tessie Drive Stats config entry id> to every card.
+
+- type: custom:tessie-drive-stats-card
+  view: overview
+  layout: auto
+  period: this_month
+
+- type: custom:tessie-drive-stats-card
+  view: drive
+  layout: auto
+  period: this_month
+
+- type: custom:tessie-drive-stats-card
+  view: efficiency
+  layout: auto
+
+- type: custom:tessie-drive-stats-card
+  view: charging
+  layout: auto
+
+- type: custom:tessie-drive-stats-card
+  view: charging_economics
+  layout: auto
+  period: this_month
+
+- type: custom:tessie-drive-stats-card
+  view: battery
+  layout: auto
+
+- type: custom:tessie-drive-stats-card
+  view: lifetime
+  layout: auto
+
+- type: custom:tessie-drive-stats-card
+  view: idle
+  layout: auto
+  period: this_month

@@ -26,5 +26,8 @@ jobs:
       - name: Check undefined names
         run: python -m ruff check --select F821 custom_components/tessie_drive_stats tests
 
+      - name: Validate bundled dashboard card JavaScript
+        run: node --check custom_components/tessie_drive_stats/www/tessie-drive-stats-card.js
+
       - name: Run tests
         run: python -m pytest -q
