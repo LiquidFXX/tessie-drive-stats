@@ -1,20 +1,34 @@
-from custom_components.tessie_drive_stats.device_groups import (
-    GROUP_BATTERY,
-    GROUP_CHARGING,
-    GROUP_CHARGING_ECONOMICS,
-    GROUP_DRIVING,
-    GROUP_EFFICIENCY,
-    GROUP_IDLE,
-    GROUP_LABELS,
-    GROUP_LIFETIME,
-    GROUP_NAVIGATION_SOFTWARE,
-    GROUP_TIRES_ALERTS,
-    GROUP_VEHICLE,
-    binary_sensor_device_group,
-    device_identifier,
-    device_name,
-    sensor_device_group,
+"""Tests for Tessie Drive Stats analytics-device grouping."""
+
+import importlib.util
+from pathlib import Path
+
+MODULE_PATH = (
+    Path(__file__).parents[1]
+    / "custom_components"
+    / "tessie_drive_stats"
+    / "device_groups.py"
 )
+spec = importlib.util.spec_from_file_location("tessie_device_groups", MODULE_PATH)
+groups = importlib.util.module_from_spec(spec)
+assert spec and spec.loader
+spec.loader.exec_module(groups)
+
+GROUP_BATTERY = groups.GROUP_BATTERY
+GROUP_CHARGING = groups.GROUP_CHARGING
+GROUP_CHARGING_ECONOMICS = groups.GROUP_CHARGING_ECONOMICS
+GROUP_DRIVING = groups.GROUP_DRIVING
+GROUP_EFFICIENCY = groups.GROUP_EFFICIENCY
+GROUP_IDLE = groups.GROUP_IDLE
+GROUP_LABELS = groups.GROUP_LABELS
+GROUP_LIFETIME = groups.GROUP_LIFETIME
+GROUP_NAVIGATION_SOFTWARE = groups.GROUP_NAVIGATION_SOFTWARE
+GROUP_TIRES_ALERTS = groups.GROUP_TIRES_ALERTS
+GROUP_VEHICLE = groups.GROUP_VEHICLE
+binary_sensor_device_group = groups.binary_sensor_device_group
+device_identifier = groups.device_identifier
+device_name = groups.device_name
+sensor_device_group = groups.sensor_device_group
 
 
 def test_device_names_and_identifiers_are_stable():
