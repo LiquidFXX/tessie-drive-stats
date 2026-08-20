@@ -19,6 +19,7 @@ def test_manifest_and_frontend_versions_match():
     assert match
     assert manifest["version"] == match.group(1)
     assert "frontend" in manifest["dependencies"]
+    assert "lovelace" in manifest["dependencies"]
 
 
 def test_frontend_registration_uses_config_entry_only_schema():
@@ -39,6 +40,17 @@ def test_frontend_registration_has_config_entry_fallback():
 
     setup_entry = text.split("async def async_setup_entry", 1)[1]
     assert "await _async_register_frontend(hass)" in setup_entry
+
+
+def test_frontend_registration_persists_lovelace_resource():
+    """Storage-mode Lovelace installs should receive an explicit module resource."""
+    text = INIT.read_text()
+    assert "async def _async_register_lovelace_resource" in text
+    assert 'hass.data.get("lovelace")' in text
+    assert 'create_item({"res_type": "module", "url": desired_url})' in text
+    assert 'await update_item(item_id, {"url": desired_url})' in text
+    assert "await _async_register_lovelace_resource(hass)" in text
+    assert "StaticPathConfig(FRONTEND_URL, str(_FRONTEND_FILE), True)" in text
 
 
 def test_bundled_card_registers_all_views():
