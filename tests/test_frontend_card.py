@@ -23,7 +23,6 @@ def test_manifest_and_frontend_versions_match():
 
 
 def test_frontend_registration_uses_config_entry_only_schema():
-    """Integration-level setup must run for config-entry-only installs."""
     text = INIT.read_text()
     assert "CONFIG_SCHEMA: Final = cv.config_entry_only_config_schema(DOMAIN)" in text
     assert "async def async_setup(" in text
@@ -32,18 +31,15 @@ def test_frontend_registration_uses_config_entry_only_schema():
 
 
 def test_frontend_registration_has_config_entry_fallback():
-    """The bundled card must also register on the config-entry path."""
     text = INIT.read_text()
     assert "async def _async_register_frontend" in text
     assert "add_extra_js_url" in text
     assert "async_register_static_paths" in text
-
     setup_entry = text.split("async def async_setup_entry", 1)[1]
     assert "await _async_register_frontend(hass)" in setup_entry
 
 
 def test_frontend_registration_persists_lovelace_resource():
-    """Storage-mode Lovelace installs should receive an explicit module resource."""
     text = INIT.read_text()
     assert "async def _async_register_lovelace_resource" in text
     assert 'hass.data.get("lovelace")' in text
@@ -59,6 +55,7 @@ def test_bundled_card_registers_all_views():
         "overview",
         "drive",
         "efficiency",
+        "cost_to_drive",
         "charging",
         "charging_economics",
         "battery",
@@ -66,9 +63,23 @@ def test_bundled_card_registers_all_views():
         "idle",
     ):
         assert f'["{view}",' in text
-    assert "customElements.define(CARD_TAG, TessieDriveStatsCard)" in text
+    assert "customElements.define(CARD_TAG,TessieDriveStatsCard)" in text
     assert "window.customCards.push({" in text
     assert "static getConfigForm()" in text
+
+
+def test_cost_to_drive_view_uses_native_economics_and_drive_entities():
+    text = CARD.read_text()
+    assert "_renderCostToDrive" in text
+    assert "estimated_driving_cost_${p}" in text
+    assert "estimated_drive_cost_per_mile_${p}" in text
+    assert "average_charging_cost_per_kwh_${p}" in text
+    assert "charging_cost_coverage_${p}" in text
+    assert "average_speed_${p}" in text
+    assert "drives_${p}" in text
+    assert '"last_drive_energy"' in text
+    assert "COST / 100 MI" in text
+    assert "LAST DRIVE EST. COST" in text
 
 
 def test_bundled_card_is_theme_aware():
