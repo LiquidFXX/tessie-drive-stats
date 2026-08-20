@@ -1,7 +1,7 @@
 {
   "codeowners": ["@LiquidFXX"],
   "config_flow": true,
-  "dependencies": ["frontend"],
+  "dependencies": ["frontend", "lovelace"],
   "documentation": "https://github.com/LiquidFXX/tessie-drive-stats",
   "domain": "tessie_drive_stats",
   "integration_type": "service",
@@ -9,5 +9,5 @@
   "issue_tracker": "https://github.com/LiquidFXX/tessie-drive-stats/issues",
   "name": "Tessie Drive Stats",
   "requirements": [],
-  "version": "0.6.3b3"
+  "version": "0.6.3b4"
 }
