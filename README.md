@@ -1,3 +1,8 @@
+<!-- support_badges_start -->
+[![PayPal](https://img.shields.io/badge/PayPal-Support%20Me-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/KevinHughesPhoto)
+[![Total Downloads](https://img.shields.io/github/downloads/LiquidFXX/tessie-drive-stats/total?label=Total%20Downloads)](https://github.com/LiquidFXX/tessie-drive-stats/releases)
+<!-- support_badges_end -->
+
 # Tessie Drive Stats for Home Assistant
 
 A HACS-ready Home Assistant custom integration for Tesla analytics backed by Tessie. It turns Tessie drive, charging, idle, consumption, battery, tire, navigation, software, lifetime-history, efficiency-intelligence, charging-economics, and optional fleet-invoice data into native Home Assistant entities.
